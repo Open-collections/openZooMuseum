@@ -639,7 +639,7 @@ class ChecklistManager extends Manager{
 		if(isset($GLOBALS['USER_RIGHTS']['ProjAdmin']) && $GLOBALS['USER_RIGHTS']['ProjAdmin']) $sql .= 'OR (p.pid IN('.implode(',',$GLOBALS['USER_RIGHTS']['ProjAdmin']).'))';
 		$sql .= ') ';
 		if($this->pid) $sql .= 'AND (p.pid = '.$this->pid.') ';
-		$sql .= 'GROUP BY p.projname, c.Name HAVING sppcnt > 10';
+		$sql .= 'GROUP BY p.projname, c.Name HAVING sppcnt > 4';
 		$rs = $this->conn->query($sql);
 		while($row = $rs->fetch_object()){
 			if($limitToKey){
