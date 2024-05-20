@@ -91,8 +91,8 @@ class OccurrenceEditorManager {
 	public function getDynamicPropertiesArr(){
 		$retArr = array();
 		$propArr = array();
-		if(array_key_exists('dynamicproperties', $this->collMap)){
-			$propArr = json_decode($this->collMap['dynamicproperties'],true);
+		if(!empty($this->collMap['dynamicproperties'])){
+			$propArr = json_decode($this->collMap['dynamicproperties'], true);
 			if(isset($propArr['editorProps'])){
 				$retArr = $propArr['editorProps'];
 				if(isset($retArr['modules-panel'])){
@@ -549,7 +549,7 @@ class OccurrenceEditorManager {
 			$sqlFrag .= $cao.($cop?' '.$cop:'').' ('.$customField.' < '.$customValue.') '.($ccp?$ccp.' ':'');
 		}
 		elseif($customTerm == 'LIKE' && $customValue){
-			$sqlFrag .= $cao.($cop?' '.$cop:'').' ('.$customField.' LIKE "%'.trim($customValue,'%').'%") '.($ccp?$ccp.' ':'');
+			$sqlFrag .= $cao . ($cop ? ' ' . $cop : '') . ' (' . $customField . ' LIKE "%' . $customValue . '%") ' . ($ccp ? $ccp . ' ' : '');
 		}
 		elseif($customTerm == 'NOT_LIKE' && $customValue){
 			$sqlFrag .= $cao.($cop?' '.$cop:'').' (('.$customField.' NOT LIKE "%'.trim($customValue,'%').'%") OR ('.$customField.' IS NULL)) '.($ccp?$ccp.' ':'');
@@ -557,7 +557,7 @@ class OccurrenceEditorManager {
 		elseif($customTerm == 'STARTS' && $customValue){
 			$sqlFrag .= $cao.($cop?' '.$cop:'').' ('.$customField.' LIKE "'.trim($customValue,'%').'%") '.($ccp?$ccp.' ':'');
 		}
-		elseif($customValue){
+		elseif($customValue !== ''){
 			$sqlFrag .= $cao.($cop?' '.$cop:'').' ('.$customField.' = "'.$customValue.'") '.($ccp?$ccp.' ':'');
 		}
 		return $sqlFrag;
@@ -775,7 +775,8 @@ class OccurrenceEditorManager {
 			//Iterate through occurrences and merge addtional identifiers and otherCatalogNumbers field values
 			foreach($occurrenceArr as $occid => $occurArr){
 				$otherCatNumArr = array();
-				if($ocnStr = trim($occurArr['othercatalognumbers'],',;| ')){
+				if($occurArr['othercatalognumbers']){
+					$ocnStr = trim($occurArr['othercatalognumbers'],',;| ');
 					$ocnStr = str_replace(array(',',';'),'|',$ocnStr);
 					$ocnArr = explode('|',$ocnStr);
 					foreach($ocnArr as $identUnit){
@@ -791,9 +792,11 @@ class OccurrenceEditorManager {
 					foreach($occurArr['identifiers'] as $idKey => $idArr){
 						$idName = $idArr['name'];
 						$idValue = $idArr['value'];
-						if(array_key_exists($idValue, $otherCatNumArr)){
-							if(!$idName && $otherCatNumArr[$idValue]) $occurrenceArr[$occid]['identifiers'][$idKey]['name'] = $otherCatNumArr[$idValue];
-							unset($otherCatNumArr[$idValue]);
+						foreach($otherCatNumArr as $ocnValue => $ocnTag){
+							if($ocnValue == $idValue || $ocnValue == $idName . ' ' . $idValue){
+								if(!$idName && $otherCatNumArr[$idValue]) $occurrenceArr[$occid]['identifiers'][$idKey]['name'] = $otherCatNumArr[$idValue];
+								unset($otherCatNumArr[$ocnValue]);
+							}
 						}
 					}
 				}
@@ -1577,8 +1580,8 @@ class OccurrenceEditorManager {
 		//Remap identifiers
 		$sql = 'UPDATE omoccuridentifiers SET occid = '.$targetOccid.' WHERE occid = '.$sourceOccid;
 		if(!$this->conn->query($sql)){
-			$this->errorArr[] .= '; '.$LANG['ERROR_REMAPPING_OCCIDS'].': '.$this->conn->error;
-			$status = false;
+			//$this->errorArr[] .= '; '.$LANG['ERROR_REMAPPING_OCCIDS'].': '.$this->conn->error;
+			//$status = false;
 		}
 
 		//Remap exsiccati
@@ -2089,18 +2092,19 @@ class OccurrenceEditorManager {
 				$imageMap[$row->imgid]['url'] = $row->url;
 				$imageMap[$row->imgid]['tnurl'] = $row->thumbnailurl;
 				$imageMap[$row->imgid]['origurl'] = $row->originalurl;
-				$imageMap[$row->imgid]['caption'] = $this->cleanOutStr($row->caption);
-				$imageMap[$row->imgid]['photographer'] = $this->cleanOutStr($row->photographer);
+				$imageMap[$row->imgid]['caption'] = $row->caption;
+				$imageMap[$row->imgid]['photographer'] = $row->photographer;
 				$imageMap[$row->imgid]['photographeruid'] = $row->photographeruid;
 				$imageMap[$row->imgid]['sourceurl'] = $row->sourceurl;
-				$imageMap[$row->imgid]['copyright'] = $this->cleanOutStr($row->copyright);
-				$imageMap[$row->imgid]['notes'] = $this->cleanOutStr($row->notes);
+				$imageMap[$row->imgid]['copyright'] = $row->copyright;
+				$imageMap[$row->imgid]['notes'] = $row->notes;
 				$imageMap[$row->imgid]['occid'] = $row->occid;
-				$imageMap[$row->imgid]['username'] = $this->cleanOutStr($row->username);
+				$imageMap[$row->imgid]['username'] = $row->username;
 				$imageMap[$row->imgid]['sort'] = $row->sortoccurrence;
 			}
 			$result->free();
 		}
+		$this->cleanOutArr($imageMap);
 		return $imageMap;
 	}
 
@@ -2487,39 +2491,17 @@ class OccurrenceEditorManager {
 	}
 
 	//Misc functions
-	private function encodeStrTargeted($inStr,$inCharset,$outCharset){
+	private function encodeStrTargeted($inStr, $inCharset, $outCharset){
 		if($inCharset == $outCharset) return $inStr;
 		$retStr = $inStr;
-		if($inCharset == "latin" && $outCharset == 'utf8'){
-			if(mb_detect_encoding($retStr,'UTF-8,ISO-8859-1',true) == "ISO-8859-1"){
-				$retStr = utf8_encode($retStr);
-			}
-		}
-		elseif($inCharset == "utf8" && $outCharset == 'latin'){
-			if(mb_detect_encoding($retStr,'UTF-8,ISO-8859-1') == "UTF-8"){
-				$retStr = utf8_decode($retStr);
-			}
-		}
+		$retStr = mb_convert_encoding($retStr, $outCharset, mb_detect_encoding($retStr));
 		return $retStr;
 	}
 
 	protected function encodeStr($inStr){
-		global $CHARSET;
 		$retStr = $inStr;
-
 		if($inStr){
-			if(strtolower($CHARSET) == "utf-8" || strtolower($CHARSET) == "utf8"){
-				if(mb_detect_encoding($inStr,'UTF-8,ISO-8859-1',true) == "ISO-8859-1"){
-					$retStr = utf8_encode($inStr);
-					//$retStr = iconv("ISO-8859-1//TRANSLIT","UTF-8",$inStr);
-				}
-			}
-			elseif(strtolower($CHARSET) == "iso-8859-1"){
-				if(mb_detect_encoding($inStr,'UTF-8,ISO-8859-1') == "UTF-8"){
-					$retStr = utf8_decode($inStr);
-					//$retStr = iconv("UTF-8","ISO-8859-1//TRANSLIT",$inStr);
-				}
-			}
+			$retStr = mb_convert_encoding($retStr, $GLOBALS['CHARSET'], mb_detect_encoding($retStr));
  		}
 		return $retStr;
 	}
@@ -2532,22 +2514,28 @@ class OccurrenceEditorManager {
 	}
 
 	protected function cleanOutStr($str){
-		$newStr = str_replace('"',"&quot;",$str);
-		$newStr = str_replace("'","&apos;",$newStr);
-		return $newStr;
+		if(!is_string($str) && !is_numeric($str) && !is_bool($str)) $str = '';
+		$str = htmlspecialchars($str, HTML_SPECIAL_CHARS_FLAGS);
+		return $str;
 	}
 
 	protected function cleanInStr($str){
-		$newStr = trim($str);
-		$newStr = preg_replace('/\s\s+/', ' ',$newStr);
-		$newStr = $this->conn->real_escape_string($newStr);
+		$newStr = $str;
+		if($newStr){
+			$newStr = trim($str);
+			$newStr = preg_replace('/\s\s+/', ' ',$newStr);
+			$newStr = $this->conn->real_escape_string($newStr);
+		}
 		return $newStr;
 	}
 
 	protected function cleanRawFragment($str){
-		$newStr = trim($str);
-		$newStr = $this->encodeStr($newStr);
-		$newStr = $this->conn->real_escape_string($newStr);
+		$newStr = $str;
+		if($newStr){
+			$newStr = trim($str);
+			$newStr = $this->encodeStr($newStr);
+			$newStr = $this->conn->real_escape_string($newStr);
+		}
 		return $newStr;
 	}
 }

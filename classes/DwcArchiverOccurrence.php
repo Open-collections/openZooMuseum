@@ -144,8 +144,8 @@ class DwcArchiverOccurrence extends Manager{
 		$this->occurDefArr['fields']['sex'] = 'o.sex';
 		$this->occurDefArr['terms']['individualCount'] = 'http://rs.tdwg.org/dwc/terms/individualCount';
 		$this->occurDefArr['fields']['individualCount'] = 'CASE WHEN o.individualCount REGEXP("(^[0-9]+$)") THEN o.individualCount ELSE NULL END AS individualCount';
-		//$this->occurDefArr['terms']['samplingProtocol'] = 'http://rs.tdwg.org/dwc/terms/samplingProtocol';
-		//$this->occurDefArr['fields']['samplingProtocol'] = 'o.samplingProtocol';
+		$this->occurDefArr['terms']['samplingProtocol'] = 'http://rs.tdwg.org/dwc/terms/samplingProtocol';
+		$this->occurDefArr['fields']['samplingProtocol'] = 'o.samplingProtocol';
 		//$this->occurDefArr['terms']['samplingEffort'] = 'http://rs.tdwg.org/dwc/terms/samplingEffort';
 		//$this->occurDefArr['fields']['samplingEffort'] = 'o.samplingEffort';
 		$this->occurDefArr['terms']['preparations'] = 'http://rs.tdwg.org/dwc/terms/preparations';
@@ -321,7 +321,7 @@ class DwcArchiverOccurrence extends Manager{
 			elseif($this->schemaType == 'coge'){
 				$targetArr = array('id','basisOfRecord','institutionCode','collectionCode','catalogNumber','occurrenceID','family','scientificName','scientificNameAuthorship',
 					'kingdom','phylum','class','order','genus','specificEpithet','infraSpecificEpithet','recordedBy','recordNumber','eventDate','year','month','day','fieldNumber',
-					'locationID','continent','waterBody','islandGroup','island','country','stateProvince','county','municipality',
+					'eventID', 'locationID','continent','waterBody','islandGroup','island','country','stateProvince','county','municipality',
 					'locality','localitySecurity','geodeticDatum','decimalLatitude','decimalLongitude','verbatimCoordinates',
 					'minimumElevationInMeters','maximumElevationInMeters','verbatimElevation','maximumDepthInMeters','minimumDepthInMeters','establishmentMeans',
 					'occurrenceRemarks','dateEntered','dateLastModified','recordID','references','collID');
@@ -352,7 +352,7 @@ class DwcArchiverOccurrence extends Manager{
 			$sqlFrag .= ', t.rankid';
 			$sql = 'SELECT DISTINCT '.trim($sqlFrag,', ');
 		}
-		$sql .= ' FROM omoccurrences o LEFT JOIN omcollections c ON o.collid = c.collid '.
+		$sql .= ' FROM omoccurrences o INNER JOIN omcollections c ON o.collid = c.collid '.
 			'LEFT JOIN taxa t ON o.tidinterpreted = t.TID ';
 		if($this->includePaleo) $sql .= 'LEFT JOIN omoccurpaleo paleo ON o.occid = paleo.occid ';
 		//if($fullSql) $sql .= ' ORDER BY c.collid ';
@@ -576,7 +576,7 @@ class DwcArchiverOccurrence extends Manager{
 
 	public function appendUpperTaxonomy2(&$r){
 		$target = (isset($r['taxonID'])?$r['taxonID']:false);
-		if(!$target) $target = ucfirst($r['family']);
+		if(!$target && !empty($r['family'])) $target = ucfirst($r['family']);
 		if($target){
 			if(array_key_exists($target, $this->upperTaxonomy)){
 				if(isset($this->upperTaxonomy[$target]['k'])) $r['t_kingdom'] = $this->upperTaxonomy[$target]['k'];
