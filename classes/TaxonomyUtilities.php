@@ -12,7 +12,8 @@ class TaxonomyUtilities {
 	public static function parseScientificName($inStr, $conn = null, $rankId = 0, $kingdomName = null){
 		//Converts scinetific name with author embedded into separate fields
 		$retArr = array('unitname1'=>'','unitname2'=>'','unitind3'=>'','unitname3'=>'');
-		$inStr = trim($inStr);
+		//Remove UTF-8 NO-BREAK SPACE codepoints
+		$inStr = trim(str_replace(chr(194).chr(160), ' ', $inStr));
 		if($inStr && is_string($inStr)){
 			//Remove underscores, common in NPS data
 			$inStr = preg_replace('/_+/',' ',$inStr);
@@ -46,8 +47,13 @@ class TaxonomyUtilities {
 			$okToCloseConn = true;
 			if($conn !== null) $okToCloseConn = false;
 			if(count($sciNameArr)){
-				if(strtolower($sciNameArr[0]) == 'x' || $sciNameArr[0] == '×' || mb_ord($sciNameArr[0]) == 215){
+				if(strtolower($sciNameArr[0]) == 'x' || $sciNameArr[0] == '×'){
 					$retArr['unitind1'] = array_shift($sciNameArr);
+				}
+				elseif(mb_ord($sciNameArr[0]) == 215){
+					$retArr['unitind1'] = '×';
+					$unitStr = substr(array_shift($sciNameArr), 2);
+					if($unitStr) array_unshift($sciNameArr, $unitStr);
 				}
 				elseif($sciNameArr[0] == '†' || mb_ord($sciNameArr[0]) == 8224){
 					$retArr['unitind1'] = array_shift($sciNameArr);
@@ -59,10 +65,15 @@ class TaxonomyUtilities {
 				//Genus
 				$retArr['unitname1'] = ucfirst(strtolower(array_shift($sciNameArr)));
 				if(count($sciNameArr)){
-					if(strtolower($sciNameArr[0]) == 'x' || mb_ord($sciNameArr[0]) == 215){
-						//Species level hybrid
+					if(strtolower($sciNameArr[0]) == 'x' || $sciNameArr[0] == '×'){
 						$retArr['unitind2'] = array_shift($sciNameArr);
 						$retArr['unitname2'] = array_shift($sciNameArr);
+					}
+					elseif(mb_ord($sciNameArr[0]) == 215){
+						$retArr['unitind2'] = '×';
+						$unitStr = substr(array_shift($sciNameArr), 2);
+						if($unitStr) $retArr['unitname2'] = $unitStr;
+						else $retArr['unitname2'] = array_shift($sciNameArr);
 					}
 					elseif(strpos($sciNameArr[0],'.') !== false){
 						//It is assumed that Author has been reached, thus stop process
@@ -147,6 +158,13 @@ class TaxonomyUtilities {
 						}
 					}
 				}
+				if(isset($retArr['author']) && mb_strpos($retArr['author'], '×') !== false){
+					if((!isset($retArr['unitind3']) || !$retArr['unitind3']) && (!isset($retArr['unitname3']) || !$retArr['unitname3'])){
+						$retArr['unitind3'] = '×';
+						$retArr['unitname3'] = substr($retArr['author'], trim(strpos($retArr['author'], '×') + 2));
+						if(!isset($retArr['rankid']) || !$retArr['rankid']) $retArr['rankid'] = 220;
+					}
+				}
 			}
 			if($conn !== null && $okToCloseConn) $conn->close();
 			//Set taxon rankid
@@ -181,8 +199,17 @@ class TaxonomyUtilities {
 				}
 			}
 			//Build sciname, without author
-			$sciname = (isset($retArr['unitind1'])?$retArr['unitind1'].' ':'').$retArr['unitname1'].' ';
-			$sciname .= (isset($retArr['unitind2'])?$retArr['unitind2'].' ':'').$retArr['unitname2'].' ';
+			$sciname = '';
+			if(!empty($retArr['unitind1'])){
+				$sciname = $retArr['unitind1'];
+				if($retArr['unitind1'] != '×' || $retArr['unitind1'] != '†') $sciname .= ' ';
+			}
+			$sciname .= $retArr['unitname1'].' ';
+			if(!empty($retArr['unitind2'])){
+				$sciname .= $retArr['unitind2'];
+				if($retArr['unitind2'] != '×') $sciname .= ' ';
+			}
+			$sciname .= $retArr['unitname2'].' ';
 			$sciname .= trim($retArr['unitind3'].' '.$retArr['unitname3']);
 			$retArr['sciname'] = trim($sciname);
 		}
@@ -339,28 +366,5 @@ class TaxonomyUtilities {
 		return $endIndex;
 	}
 	*/
-
-	public static function linkOccurrenceTaxa($conn = null){
-		if(!$conn) $conn = MySQLiConnectionFactory::getCon('write');
-
-		$sql1 = 'UPDATE omoccurrences o INNER JOIN taxa t ON o.sciname = t.sciname AND o.scientificnameauthorship = t.author SET o.TidInterpreted = t.tid WHERE (o.TidInterpreted IS NULL)';
-		if(!$conn->query($sql1)){
-			echo '<div>ERROR indexing occurrences by matching sciname and author</div>';
-		}
-
-		$sql2 = 'UPDATE omoccurrences o INNER JOIN taxa t ON o.sciname = t.sciname '.
-			'INNER JOIN taxaenumtree e ON t.tid = e.tid '.
-			'INNER JOIN taxa t2 ON e.parenttid = t2.tid '.
-			'SET o.TidInterpreted = t.tid '.
-			'WHERE (o.TidInterpreted IS NULL) AND (t2.rankid = 140) AND (t.sciname = o.family)';
-		if(!$conn->query($sql2)){
-			echo '<div>ERROR indexing occurrences by matching sciname and family</div>';
-		}
-
-		$sql3 = 'UPDATE omoccurrences o INNER JOIN taxa t ON o.sciname = t.sciname SET o.TidInterpreted = t.tid WHERE (o.TidInterpreted IS NULL)';
-		if(!$conn->query($sql3)){
-			echo '<div>ERROR indexing occurrences by matching just sciname</div>';
-		}
-	}
 }
 ?>

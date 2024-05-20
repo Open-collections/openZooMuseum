@@ -95,11 +95,6 @@ if(isset($_SERVER['HTTP_ACCEPT'])){
 
 if($SYMB_UID){
 	//Form action submitted
-	if(array_key_exists('delvouch',$_GET)){
-		if(!$indManager->deleteVoucher($_GET['delvouch'])){
-			$statusStr = $indManager->getErrorMessage();
-		}
-	}
 	if(array_key_exists('commentstr',$_POST)){
 		if(!$indManager->addComment($_POST['commentstr'])){
 			$statusStr = $indManager->getErrorMessage();
@@ -123,8 +118,13 @@ if($SYMB_UID){
 			$statusStr = $indManager->getErrorMessage();
 		}
 	}
-	elseif($submit == 'Add Voucher'){
+	elseif($submit == 'addVoucher'){
 		if(!$indManager->linkVoucher($_POST)){
+			$statusStr = $indManager->getErrorMessage();
+		}
+	}
+	elseif(array_key_exists('delvouch',$_GET)){
+		if(!$indManager->deleteVoucher($_GET['delvouch'])){
 			$statusStr = $indManager->getErrorMessage();
 		}
 	}
@@ -326,7 +326,8 @@ $traitArr = $indManager->getTraitArr();
 						</div>
 					</div>
 					<?php
-					$iconUrl = (substr($collMetadata["icon"],0,6)=='images'?'../../':'').$collMetadata['icon'];
+					$iconUrl = '';
+					if($collMetadata['icon']) $iconUrl = (substr($collMetadata['icon'], 0, 6) == 'images' ? '../../' : '') . $collMetadata['icon'];
 					if($iconUrl){
 						?>
 						<div id="collicon-div">
@@ -955,6 +956,10 @@ $traitArr = $indManager->getTraitArr();
 										if($imgArr['url'] && substr($thumbUrl,0,7)!='process' && $imgArr['url'] != $imgArr['lgurl']) echo '<div><a href="'.$imgArr['url'].'" target="_blank">'.$LANG['OPEN_MEDIUM'].'</a></div>';
 										if($imgArr['lgurl']) echo '<div><a href="'.$imgArr['lgurl'].'" target="_blank">'.$LANG['OPEN_LARGE'].'</a></div>';
 										if($imgArr['sourceurl']) echo '<div><a href="'.$imgArr['sourceurl'].'" target="_blank">'.$LANG['OPEN_SOURCE'].'</a></div>';
+										//Use image rights settings as the default for current record
+										if($imgArr['rights']) $collMetadata['rights'] = $imgArr['rights'];
+										if($imgArr['copyright']) $collMetadata['rightsholder'] = $imgArr['copyright'];
+										if($imgArr['accessrights']) $collMetadata['accessrights'] = $imgArr['accessrights'];
 										?>
 									</div>
 									<?php
@@ -965,11 +970,9 @@ $traitArr = $indManager->getTraitArr();
 						}
 						//Rights
 						$rightsStr = $collMetadata['rights'];
-						if($collMetadata['rights']){
-							$rightsHeading = '';
-							if(isset($RIGHTS_TERMS)) $rightsHeading = array_search($rightsStr,$RIGHTS_TERMS);
+						if($rightsStr){
 							if(substr($collMetadata['rights'],0,4) == 'http'){
-								$rightsStr = '<a href="'.$rightsStr.'" target="_blank">'.($rightsHeading?$rightsHeading:$rightsStr).'</a>';
+								$rightsStr = '<a href="'.$rightsStr.'" target="_blank">' . $rightsStr . '</a>';
 							}
 							$rightsStr = '<div style="margin-top:2px;"><label>'.$LANG['USAGE_RIGHTS'].':</label> '.$rightsStr.'</div>';
 						}
@@ -1395,7 +1398,7 @@ $traitArr = $indManager->getTraitArr();
 					<?php
 					ob_flush();
 					flush();
-					$rawArchArr = $indManager->checkArchive();
+					$rawArchArr = $indManager->checkArchive($guid);
 					if($rawArchArr && $rawArchArr['obj']){
 						$archArr = $rawArchArr['obj'];
 						if($isEditor){

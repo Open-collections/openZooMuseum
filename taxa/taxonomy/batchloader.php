@@ -10,9 +10,9 @@ ini_set('max_execution_time', 3600);
 
 $action = array_key_exists('action', $_REQUEST) ? $_REQUEST['action'] : '';
 $taxAuthId = (array_key_exists('taxauthid', $_REQUEST) ? filter_var($_REQUEST['taxauthid'], FILTER_SANITIZE_NUMBER_INT) : 1);
-$kingdomName = (array_key_exists('kingdomname', $_REQUEST) ? filter_var($_REQUEST['kingdomname'], FILTER_SANITIZE_STRING) : '');
-$sciname = (array_key_exists('sciname', $_REQUEST) ? filter_var($_REQUEST['sciname'], FILTER_SANITIZE_STRING) : '');
-$targetApi = (array_key_exists('targetapi',$_REQUEST) ? filter_var($_REQUEST['targetapi'], FILTER_SANITIZE_STRING) : '');
+$kingdomName = (array_key_exists('kingdomname', $_REQUEST) ? htmlspecialchars($_REQUEST['kingdomname'], HTML_SPECIAL_CHARS_FLAGS) : '');
+$sciname = (array_key_exists('sciname', $_REQUEST) ? htmlspecialchars($_REQUEST['sciname'], HTML_SPECIAL_CHARS_FLAGS) : '');
+$targetApi = $_REQUEST['targetapi'] ?? '';
 $rankLimit = (array_key_exists('ranklimit', $_REQUEST) ? filter_var($_REQUEST['ranklimit'], FILTER_SANITIZE_NUMBER_INT):'');
 
 $isEditor = false;
@@ -375,9 +375,8 @@ if($isEditor){
 					if(isset($_REQUEST['dskey'])){
 						echo '<fieldset>';
 						echo '<legend>'.(isset($LANG['ACTION_PANEL'])?$LANG['ACTION_PANEL']:'Action Panel').'</legend>';
-						$id = $_REQUEST['id'];
-						if(!preg_match('/^[A-Za-z\d]+$/',$id)) $id = 0;
-						$datasetKey = (is_numeric($_REQUEST['dskey'])?$_REQUEST['dskey']:0);
+						$id = htmlspecialchars($_REQUEST['id'], HTML_SPECIAL_CHARS_FLAGS);
+						$datasetKey = filter_var($_REQUEST['dskey'], FILTER_SANITIZE_NUMBER_INT);
 						$harvester->addColNode($id, $datasetKey, $sciname, $rankLimit);
 						echo '</fieldset>';
 					}
@@ -390,13 +389,13 @@ if($isEditor){
 							unset($targetArr['number_results']);
 							echo '<div><b>'.(isset($LANG['TARGET_TAXON'])?$LANG['TARGET_TAXON']:'Target taxon').':</b> '.$sciname.'</div>';
 							echo '<div><b>'.(isset($LANG['KINGDOM'])?$LANG['KINGDOM']:'Kingdom').':</b> '.substr($kingdomName,strpos($kingdomName,':')+1).'</div>';
-							echo '<div><b>'.(isset($LANG['LOWEST_RANK'])?$LANG['LOWEST_RANK']:'Lowest rank limit').':</b> '.$rankArr[$rankLimit].'</div>';
+							if($rankLimit) echo '<div><b>'.(isset($LANG['LOWEST_RANK'])?$LANG['LOWEST_RANK']:'Lowest rank limit').':</b> '.$rankArr[$rankLimit].'</div>';
 							echo '<div><b>'.(isset($LANG['SOURCE_LINK'])?$LANG['SOURCE_LINK']:'Source link').':</b> <a href="https://www.catalogueoflife.org" target="_blank">https://www.catalogueoflife.org</a></div>';
 							echo '<div><b>'.(isset($LANG['TOTAL_RESULTS'])?$LANG['TOTAL_RESULTS']:'Total results').':</b> '.$numResults.'</div>';
 							echo '<div><hr/></div>';
-							foreach($targetArr as $colID => $colArr){
+							foreach($targetArr as $cbNameUsageID => $colArr){
 								echo '<div style="margin-top:10px">';
-								echo '<div><b>'.(isset($LANG['ID'])?$LANG['ID']:'ID').':</b> '.$colID.'</div>';
+								echo '<div><b>'.(isset($LANG['ID'])?$LANG['ID']:'ID').':</b> '.$cbNameUsageID.'</div>';
 								if(isset($colArr['error'])){
 									echo '<div>'.(isset($LANG['ERROR'])?$LANG['ERROR']:'ERROR').': '.$colArr['error'].'</div>';
 								}
@@ -404,18 +403,25 @@ if($isEditor){
 									echo '<div>'.(isset($LANG['NAME'])?$LANG['NAME']:'Name').': '.$colArr['label'].'</div>';
 									echo '<div>'.(isset($LANG['DATSET_KEY'])?$LANG['DATSET_KEY']:'Dataset key').': <a href="https://api.catalogueoflife.org/dataset/'.$colArr['datasetKey'].'" target="_blank">'.$colArr['datasetKey'].'</a></div>';
 									echo '<div>'.(isset($LANG['STATUS'])?$LANG['STATUS']:'Status').': '.$colArr['status'].'</div>';
-									if(isset($colArr['accordingTo'])) echo '<div>'.(isset($LANG['ACC_TO'])?$LANG['ACC_TO']:'According to').': '.$colArr['accordingTo'].'</div>';
 									if(isset($colArr['link'])) echo '<div>'.(isset($LANG['SOURCE_LINK'])?$LANG['SOURCE_LINK']:'Source link').': <a href="'.$colArr['link'].'" target="_blank">'.$colArr['link'].'</a></div>';
-									if(isset($colArr['scrutinizer'])) echo '<div>'.(isset($LANG['SCRUTINIZER'])?$LANG['SCRUTINIZER']:'Scrutinizer').': '.$colArr['scrutinizer'].'</div>';
 									$targetStatus = '<span style="color:orange">'.(isset($LANG['NOT_PREF'])?$LANG['NOT_PREF']:'not preferred').'</span>';
 									if($colArr['isPreferred']) $targetStatus = '<span style="color:green">'.(isset($LANG['PREF_TARGET'])?$LANG['PREF_TARGET']:'preferred target').'</span>';
 									echo '<div>'.(isset($LANG['TARGET_STATUS'])?$LANG['TARGET_STATUS']:'Target status').': '.$targetStatus.'</div>';
-									if(isset($colArr['webServiceUrl'])) echo '<div>'.(isset($LANG['WEB_SERVICE_URL'])?$LANG['WEB_SERVICE_URL']:'Web Service URL').': <a href="'.$colArr['webServiceUrl'].'" target="_blank">'.$colArr['webServiceUrl'].'</a></div>';
 									if(isset($colArr['apiUrl'])) echo '<div>'.(isset($LANG['API_URL'])?$LANG['API_URL']:'API URL').': <a href="'.$colArr['apiUrl'].'" target="_blank">'.$colArr['apiUrl'].'</a></div>';
-									echo '<div>'.(isset($LANG['COL_URL'])?$LANG['COL_URL']:'CoL URL').': <a href="'.$colArr['colUrl'].'" target="_blank">'.$colArr['colUrl'].'</a></div>';
-									$harvestLink = 'batchloader.php?id='.$colID.'&dskey='.$colArr['datasetKey'].'&targetapi=col&taxauthid='.$_POST['taxauthid'].
-										'&kingdomname='.$_POST['kingdomname'].'&ranklimit='.$_POST['ranklimit'].'&sciname='.$sciname.'&action=loadApiNode';
-									if($colArr['datasetKey']) echo '<div><b><a href="'.$harvestLink.'">'.(isset($LANG['TARGET_THIS_NODE'])?$LANG['TARGET_THIS_NODE']:'Target this node to harvest children').'</a></b></div>';
+									if($colArr['datasetKey']){
+										?>
+										<form target="batchloader.php" method="post">
+											<input type="hidden" name="id" value="<?= htmlspecialchars($cbNameUsageID, HTML_SPECIAL_CHARS_FLAGS) ?>">
+											<input type="hidden" name="dskey" value="<?= filter_var($colArr['datasetKey'], FILTER_SANITIZE_NUMBER_INT) ?>">
+											<input type="hidden" name="targetapi" value="col">
+											<input type="hidden" name="taxauthid" value="<?= $taxAuthId ?>">
+											<input type="hidden" name="kingdomname" value="<?= $kingdomName ?>">
+											<input type="hidden" name="ranklimit" value="<?= $rankLimit ?>">
+											<input type="hidden" name="sciname" value="<?= $sciname ?>">
+											<button type="submit" name="action" value="loadApiNode" style="margin-top:10px"><?= $LANG['IMPORT_THIS_NODE'] ?></button>
+										</form>
+										<?php
+									}
 								}
 								echo '</div>';
 							}
@@ -593,7 +599,9 @@ if($isEditor){
 								<?php
 								$taxApiList = $loaderManager->getTaxonomicResourceList();
 								foreach($taxApiList as $taKey => $taValue){
-									echo '<input name="targetapi" type="radio" value="'.$taKey.'" '.($targetApi == $taKey?'checked':'').' /> '.$taValue.'<br/>';
+									if($taKey == 'col' || $taKey == 'worms'){
+										echo '<input name="targetapi" type="radio" value="'.$taKey.'" '.($targetApi == $taKey?'checked':'').' /> '.$taValue.'<br/>';
+									}
 								}
 								?>
 							</fieldset>

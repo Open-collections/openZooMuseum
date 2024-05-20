@@ -10,7 +10,6 @@ class OccurrenceCollectionProfile extends OmCollections{
 	private $datasetKey;
 	private $endpointKey;
 	private $idigbioKey;
-	private $materialSampleIsActive = false;
 
 	public function __construct($connType = 'readonly'){
 		parent::__construct($connType);
@@ -39,7 +38,6 @@ class OccurrenceCollectionProfile extends OmCollections{
 			}
 			if($r['dynamicProperties'] && strpos($r['dynamicProperties'],'matSample":{"status":1')){
 				$this->collMeta[$r['collid']]['matSample'] = 1;
-				$this->materialSampleIsActive = true;
 			}
 			$uDate = '';
 			if($r['uploaddate']){
@@ -507,6 +505,7 @@ class OccurrenceCollectionProfile extends OmCollections{
 
 	public function updateStatistics($verbose = false){
 		$occurMaintenance = new OccurrenceMaintenance();
+		$occurMaintenance->setCollidStr($this->collid);
 		if($verbose){
 			echo '<ul>';
 			$occurMaintenance->setVerbose(true);
@@ -514,13 +513,14 @@ class OccurrenceCollectionProfile extends OmCollections{
 			flush();
 			ob_flush();
 		}
-		$occurMaintenance->generalOccurrenceCleaning($this->collid);
+		$occurMaintenance->generalOccurrenceCleaning();
+		//$occurMaintenance->batchUpdateGeoreferenceIndex();
 		if($verbose){
 			echo '<li>Updating statistics...</li>';
 			flush();
 			ob_flush();
 		}
-		$occurMaintenance->updateCollectionStats($this->collid, true);
+		$occurMaintenance->updateCollectionStatsFull();
 		if($verbose){
 			echo '<li>Finished updating collection statistics</li>';
 			flush();
@@ -602,7 +602,8 @@ class OccurrenceCollectionProfile extends OmCollections{
 				echo '<li style="margin-left:15px;">Cleaning statistics for: '.$r->collectionname.'</li>';
 				flush();
 				ob_flush();
-				$occurMaintenance->updateCollectionStats($r->collid, true);
+				$occurMaintenance->setCollidStr($r->collid);
+				$occurMaintenance->updateCollectionStatsFull();
 			}
 			$rs->free();
 			echo '<li>Statistics update complete!</li>';
@@ -920,14 +921,11 @@ class OccurrenceCollectionProfile extends OmCollections{
 	public function traitCodingActivated(){
 		$bool = false;
 		$sql = 'SELECT traitid FROM tmtraits LIMIT 1';
-		$rs = $this->conn->query($sql);
-		if($rs->num_rows) $bool = true;
-		$rs->free();
+		if($rs = $this->conn->query($sql)){
+			if($rs->num_rows) $bool = true;
+			$rs->free();
+		}
 		return $bool;
-	}
-
-	public function materialSampleIsActive(){
-		return $this->materialSampleIsActive;
 	}
 
 	//Misc functions

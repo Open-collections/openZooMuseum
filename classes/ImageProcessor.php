@@ -18,7 +18,6 @@ class ImageProcessor {
 	private $destructConn = true;
 
 	function __construct($con = null){
-		ini_set('auto_detect_line_endings', true);
 		if($con){
 			//Inherits connection from another class
 			$this->conn = $con;
@@ -347,7 +346,7 @@ class ImageProcessor {
 				$occurMain = new OccurrenceMaintenance($this->conn);
 
 				$this->logOrEcho('Updating statistics...');
-				if(!$occurMain->updateCollectionStats($this->collid)){
+				if(!$occurMain->updateCollectionStatsBasic($this->collid)){
 					$errorArr = $occurMain->getErrorArr();
 					foreach($errorArr as $errorStr){
 						$this->logOrEcho($errorStr,1);
@@ -545,7 +544,8 @@ class ImageProcessor {
 		/*
 		$this->logOrEcho('General cleaning...',2);
 		$collString = implode(',',$collList);
-		if(!$occurMain->generalOccurrenceCleaning($collString)){
+		$occurMain->setCollidStr($collString);
+		if(!$occurMain->generalOccurrenceCleaning()){
 			$errorArr = $occurMain->getErrorArr();
 			foreach($errorArr as $errorStr){
 				$this->logOrEcho($errorStr,1);
@@ -559,7 +559,7 @@ class ImageProcessor {
 		if($collList){
 			$this->logOrEcho('Updating collection statistics...',2);
 			foreach($collList as $collid){
-				if(!$occurMain->updateCollectionStats($collid)){
+				if(!$occurMain->updateCollectionStatsBasic($collid)){
 					$errorArr = $occurMain->getErrorArr();
 					foreach($errorArr as $errorStr){
 						$this->logOrEcho($errorStr,1);

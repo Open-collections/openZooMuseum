@@ -340,8 +340,8 @@ class TaxonProfile extends Manager {
 		$retArr = Array();
 		if($this->tid){
 			$rsArr = array();
-			$sql = 'SELECT p.tdProfileID, IFNULL(p.caption, d.caption) as caption, IFNULL(p.publication, d.source) AS source, IFNULL(p.urlTemplate, d.sourceurl) AS sourceurl,
-				IFNULL(p.defaultDisplayLevel, d.displaylevel) AS displaylevel, d.tid, d.tdbid, s.tdsid, s.heading, s.statement, s.displayheader, d.language, p.langid
+			$sql = 'SELECT p.tdProfileID, IFNULL(d.caption, p.caption) as caption, IFNULL(d.source, p.publication) AS source, IFNULL(d.sourceurl, p.urlTemplate) AS sourceurl,
+				IFNULL(d.displaylevel, p.defaultDisplayLevel) AS displaylevel, d.tid, d.tdbid, s.tdsid, s.heading, s.statement, s.displayheader, d.language, p.langid
 				FROM taxadescrprofile p INNER JOIN taxadescrblock d ON p.tdProfileID = d.tdProfileID
 				INNER JOIN taxadescrstmts s ON d.tdbid = s.tdbid
 				LEFT JOIN adminlanguages l ON p.langid = l.langid ';
@@ -453,6 +453,7 @@ class TaxonProfile extends Manager {
 	//Taxon Link functions
 	private function setLinkArr(){
 		if($this->linkArr === false && $this->tid){
+			$this->linkArr = array();
 			$sql = 'SELECT DISTINCT l.tlid, l.url, l.icon, l.title, l.notes
 				FROM taxalinks l LEFT JOIN taxaenumtree e ON l.tid = e.parenttid
 				WHERE (e.tid IN('.$this->tid.') OR l.tid IN('.$this->tid.')) ORDER BY l.sortsequence, l.title';
@@ -480,6 +481,23 @@ class TaxonProfile extends Manager {
 	public function getLinkArr(){
 		if($this->linkArr === false) $this->setLinkArr();
 		return $this->linkArr;
+	}
+
+	public function getResourceLinkArr(){
+		$retArr = array();
+		if($this->tid){
+			$sql = 'SELECT taxaResourceID, sourceName, sourceIdentifier, sourceGuid, url, notes FROM taxaresourcelinks WHERE tid = '.$this->tid.' ORDER BY ranking, sourceName';
+			$rs = $this->conn->query($sql);
+			while($r = $rs->fetch_object()){
+				$retArr[$r->taxaResourceID]['name'] = $r->sourceName;
+				$retArr[$r->taxaResourceID]['id'] = $r->sourceIdentifier;
+				$retArr[$r->taxaResourceID]['guid'] = $r->sourceGuid;
+				$retArr[$r->taxaResourceID]['url'] = $r->url;
+				$retArr[$r->taxaResourceID]['notes'] = $r->notes;
+			}
+			$rs->free();
+		}
+		return $retArr;
 	}
 
 	//Set children data for taxon higher than species level
@@ -590,7 +608,7 @@ class TaxonProfile extends Manager {
 	//Misc functions
 	private function getChildrenClid($clid){
 		$clidArr = array($clid);
-		$sqlBase = 'SELECT clidchild FROM fmchklstchildren WHERE clid IN(';
+		$sqlBase = 'SELECT clidchild FROM fmchklstchildren WHERE clid != clidchild AND clid IN(';
 		$sql = $sqlBase.$clid.')';
 		do{
 			$childStr = '';
@@ -807,7 +825,7 @@ class TaxonProfile extends Manager {
 			//Direct parent checklist
 			$sql = 'SELECT c.clid, c.name '.
 				'FROM fmchecklists c INNER JOIN fmchklstchildren cp ON c.clid = cp.clid '.
-				'WHERE (cp.clidchild = '.$clid.')';
+				'WHERE cp.clid != cp.clidchild AND (cp.clidchild = '.$clid.')';
 			$rs = $this->conn->query($sql);
 			if($r = $rs->fetch_object()){
 				$retArr[$r->clid] = $r->name;

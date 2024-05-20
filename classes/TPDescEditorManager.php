@@ -14,8 +14,8 @@ class TPDescEditorManager extends TPEditorManager{
 	public function getDescriptions(){
 		$descrArr = Array();
 		$langArr = false;
-		$sql = 'SELECT p.tdProfileID, IFNULL(p.caption, d.caption) as caption, IFNULL(p.publication, d.source) AS source, IFNULL(p.urlTemplate, d.sourceurl) AS sourceurl,
-			IFNULL(p.defaultDisplayLevel, d.displaylevel) AS displaylevel, t.tid, t.sciname, d.tdbid, d.notes, l.langid, d.language
+		$sql = 'SELECT p.tdProfileID, IFNULL(d.caption, p.caption) as caption, IFNULL(d.source, p.publication) AS source, IFNULL(d.sourceurl, p.urlTemplate) AS sourceurl,
+			IFNULL(d.displaylevel, p.defaultDisplayLevel) AS displaylevel, t.tid, t.sciname, d.tdbid, d.notes, l.langid, d.language
 			FROM taxadescrprofile p INNER JOIN taxadescrblock d ON p.tdProfileID = d.tdProfileID
 			LEFT JOIN adminlanguages l ON p.langid = l.langid ';
 		if($this->acceptance){
@@ -84,7 +84,7 @@ class TPDescEditorManager extends TPEditorManager{
 			$langid = isset($postArr['langid']) ? $postArr['langid'] : 1;
 			$defaultDisplayLevel = isset($postArr['defaultDisplayLevel']) ? $postArr['defaultDisplayLevel'] : 1;
 			$dynamicProperties = isset($postArr['dynamicProperties']) ? $postArr['dynamicProperties'] : null;
-			$modifiedUid = isset($GLOBALS['SYMB_UID']);
+			$modifiedUid = $GLOBALS['SYMB_UID'];
 			$sql = 'INSERT INTO taxadescrprofile(title, authors, caption, projectDescription, abstract, publication, urlTemplate, internalNotes, langid,
 				defaultDisplayLevel, dynamicProperties, modifiedUid, modifiedTimestamp)
 				VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())';
@@ -130,7 +130,7 @@ class TPDescEditorManager extends TPEditorManager{
 					elseif($stmt->error) $this->errorMessage = $stmt->error;
 					$stmt->close();
 				}
-				echo $this->conn->error;
+				$this->errorMessage = $this->conn->error;
 			}
 		}
 		return $status;
@@ -159,7 +159,7 @@ class TPDescEditorManager extends TPEditorManager{
 			if($tdProfileID = $this->insertDescriptionProfile($profileArr)){
 				$tid = $postArr['tid'];
 				$note = isset($postArr['notes']) ? $postArr['notes'] : null;
-				$modifiedUid = isset($GLOBALS['SYMB_UID']);
+				$modifiedUid = $GLOBALS['SYMB_UID'];
 				$sql = 'INSERT INTO taxadescrblock(tdProfileID, tid, source, sourceurl, displaylevel, notes, uid) VALUES(?, ?, ?, ?, ?, ?, ?)';
 				if($stmt = $this->conn->prepare($sql)){
 					$stmt->bind_param('iissisi', $tdProfileID, $tid, $source, $sourceUrl, $displayLevel, $note, $modifiedUid);
@@ -176,7 +176,7 @@ class TPDescEditorManager extends TPEditorManager{
 	public function updateDescriptionBlock($postArr){
 		$status = false;
 		if(is_numeric($postArr['tdbid'])){
-			$blockFieldArr = array('source' => 's', 'sourceurl' => 's', 'displaylevel' => 'i', 'notes' => 's' );
+			$blockFieldArr = array( 'caption' => 's', 'source' => 's', 'sourceurl' => 's', 'displaylevel' => 'i', 'notes' => 's', 'langid' => 's' );
 			$sqlFrag = '';
 			$paramArr = array();
 			$paramType = '';
@@ -194,16 +194,19 @@ class TPDescEditorManager extends TPEditorManager{
 				$sql = 'UPDATE taxadescrblock SET ' . trim($sqlFrag, ', ') . ' WHERE (tdbid = ?)';
 				if($stmt = $this->conn->prepare($sql)){
 					if($stmt->bind_param($paramType, ...$paramArr)){
-						$stmt->execute();
-						if($stmt->affected_rows) $status = true;
-						elseif($stmt->error) $this->errorMessage = $stmt->error;
-						$stmt->close();
+						if($stmt->execute()){
+							if($stmt->affected_rows) $status = true;
+							elseif($stmt->error) $this->errorMessage = $stmt->error;
+							$stmt->close();
+						}
+						else  $this->errorMessage = $stmt->error;
 					}
-					else echo 'error binding: '.$stmt->error.'<br>';
+					else  $this->errorMessage = $stmt->error;
 				}
-				else echo 'error preparing statement: '.$this->conn->error.'<br>';
+				else  $this->errorMessage = $this->conn->error;
 			}
 			// Temp code until total refactor: transfer selected fields to decription profile
+			unset($postArr['caption']);
 			if(isset($postArr['source'])){
 				$postArr['publication'] = $postArr['source'];
 			}
@@ -213,7 +216,9 @@ class TPDescEditorManager extends TPEditorManager{
 			if(isset($postArr['sourceurl'])){
 				$postArr['urlTemplate'] = $postArr['sourceurl'];
 			}
-			if($this->updateDescriptionProfile($postArr)) $status = true;
+			if($status){
+				if($this->updateDescriptionProfile($postArr)) $status = true;
+			}
 		}
 		return $status;
 	}

@@ -312,7 +312,7 @@ if($SYMB_UID){
 				$statusStr = $occManager->editIdentificationRanking($_POST['confidenceranking'],$_POST['notes']);
 				$tabTarget = 1;
 			}
-			elseif($action == 'Link to Checklist as Voucher'){
+			elseif($action == 'linkChecklistVoucher'){
 				$statusStr = $occManager->linkChecklistVoucher($_POST['clidvoucher'],$_POST['tidvoucher']);
 			}
 			elseif($action == 'deletevoucher'){
@@ -515,7 +515,7 @@ else{
 	<script src="../../js/symb/collections.coordinateValidation.js?ver=2" type="text/javascript"></script>
 	<script src="../../js/symb/wktpolygontools.js?ver=2" type="text/javascript"></script>
 	<script src="../../js/symb/collections.georef.js?ver=2" type="text/javascript"></script>
-	<script src="../../js/symb/collections.editor.main.js?ver=3" type="text/javascript"></script>
+	<script src="../../js/symb/collections.editor.main.js?ver=6" type="text/javascript"></script>
 	<script src="../../js/symb/collections.editor.tools.js?ver=4" type="text/javascript"></script>
 	<script src="../../js/symb/collections.editor.imgtools.js?ver=3" type="text/javascript"></script>
 	<script src="../../js/jquery.imagetool-1.7.js?ver=140310" type="text/javascript"></script>
@@ -673,7 +673,7 @@ else{
 											'&annotatorname='.urlencode($USER_DISPLAY_NAME).'&annotatoremail='.urlencode($userEmail).
 											(isset($collMap['collectioncode'])?'&collectioncode='.urlencode($collMap['collectioncode']):'').
 											(isset($collMap['institutioncode'])?'&institutioncode='.urlencode($collMap['institutioncode']):'').
-											'&catalognumber='.urlencode($occArr['catalognumber']);
+											'&catalognumber='.urlencode($occArr['catalognumber']??'');
 										if($isEditor < 4){
 											?>
 											<li id="detTab">
@@ -1434,8 +1434,8 @@ else{
 												<div id="processingStatusDiv">
 													<?php echo $LANG['PROCESSING_STATUS']; ?><br/>
 													<?php
-														$pStatus = array_key_exists('processingstatus',$occArr)?strtolower($occArr['processingstatus']):'';
-														if(!$pStatus && !$occId) $pStatus = 'pending review';
+													$pStatus = !empty($occArr['processingstatus']) ? strtolower($occArr['processingstatus']) : '';
+													if(!$pStatus && !$occId) $pStatus = 'pending review';
 													?>
 													<select name="processingstatus" onchange="fieldChanged('processingstatus');">
 														<option value=''><?php echo $LANG['NO_SET_STATUS']; ?></option>
