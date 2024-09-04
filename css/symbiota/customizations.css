@@ -2,4 +2,9 @@
 Place your CSS customizations here.
 This stylesheet is defined last and will override all previously loaded sheets. You may reference variables defined in variables.css 
  */
+
+ /* Global */
+ html {
+  font-size: 10px;
+}
  
