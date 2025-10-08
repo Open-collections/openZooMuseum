@@ -20,7 +20,7 @@ ALTER TABLE `omoccurpaleo`
   CHANGE COLUMN `geologicalContextID` `geologicalContextID` VARCHAR(100) NULL DEFAULT NULL ;
 
 ALTER TABLE `omoccurpaleo`
-  DROP COLUMN `storageAge`;
+  DROP COLUMN IF EXISTS `storageAge`;
 
 #Add paleo indexes
 ALTER TABLE `omoccurpaleo`
@@ -45,13 +45,20 @@ ALTER TABLE `omoccurpaleogts`
 
 ALTER TABLE `omoccurpaleogts`
   DROP INDEX `UNIQUE_gtsterm`,
-  DROP INDEX `FK_gtsparent_idx`;
 
 ALTER TABLE `omoccurpaleogts`
   ADD UNIQUE INDEX `UQ_paleogts_gtsterm` (`gtsterm` ASC),
-  ADD INDEX `FK_paleogts_parent_idx` (`parentGtsID` ASC),
   ADD INDEX `IX_paleogts_myaStart` (`myaStart` ASC),
   ADD INDEX `IX_paleogts_myaEnd` (`myaEnd` ASC);
+
+# Disable foreign key checks temporarily to rename index
+SET FOREIGN_KEY_CHECKS=0;
+
+ALTER TABLE `omoccurpaleogts`
+  DROP INDEX IF EXISTS `FK_gtsparent_idx`,
+  ADD INDEX IF NOT EXISTS `FK_paleogts_parent_idx` (`parentGtsID` ASC);
+
+SET FOREIGN_KEY_CHECKS=1;
 
 #reset the values within omoccurpaleogts table
 TRUNCATE `omoccurpaleogts`;
