@@ -530,7 +530,9 @@ class Media {
 					$width = $size[0];
 					$height = $size[1];
 
+
 					$storage->upload($file);
+					$createdFilepaths[] = $storage->getDirPath($file);
 
 					$urls = [
 						'thumbnailUrl' => [
@@ -573,7 +575,9 @@ class Media {
 			mysqli_rollback($conn);
 
 			foreach($createdFilepaths as $filepath) {
-				unlink($filepath);
+				if(file_exists($filepath)) {
+					unlink($filepath);
+				}
 			}
 
 			array_push(self::$errors, $th->getMessage());
