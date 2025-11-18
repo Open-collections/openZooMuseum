@@ -941,6 +941,9 @@ class Media {
 			case 'image/gif':
 				$image = imagecreatefromgif($src_path);
 				break;
+			case 'image/bmp':
+				$image = imagecreatefrombmp($src_path);
+				break;
 			default:
 				throw new Exception(
 					'Mime Type: ' . $mime_type . ' not supported for creation'
