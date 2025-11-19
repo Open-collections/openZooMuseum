@@ -298,7 +298,17 @@ function updateChip(e) {
           // don't add these chips;
         } else {
           // add chips depending on type of item
-          item.hasAttribute("data-chip") ? addChip(item) : "";
+          const defaultValues = [
+            { id: "usethes", value: "1" },
+            { id: "includeothercatnum", value: "1" },
+            { id: "usethes-associations", value: "1" },
+          ];
+          const isInDefaultValList = defaultValues.some(
+            (val) => val.id === item.id && val.value === item.value
+          );
+          if(!isInDefaultValList && item.hasAttribute("data-chip")) {
+            addChip(item);
+          }
         }
       }
     }
@@ -307,9 +317,19 @@ function updateChip(e) {
 
   // then go through remaining options and find selected items
   const optionElements = document.querySelectorAll(".content option");
+  const defaultValues = [
+    { id: "taxontype-scientific", value: "2" },
+    { id: "association-type-none", value: "none" },
+    { id: "taxontype-association-scientific", value: "2" },
+  ];
   optionElements.forEach((item) => {
     if (item.selected && item.value && item.hasAttribute("data-chip")) {
-      addChip(item);
+      const isInDefaultValList = defaultValues.some(
+        (val) => val.id === item.id && val.value === item.value
+      );
+      if (!isInDefaultValList) {
+        addChip(item);
+      }
     }
   });
 }
