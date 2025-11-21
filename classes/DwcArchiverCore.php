@@ -220,6 +220,22 @@ class DwcArchiverCore extends Manager{
         return $this->polygons;
     }
 
+    private function setIncludePaleo(){
+    	if ((!empty($GLOBALS['ACTIVATE_PALEO'])) ||
+    			(!empty($this->conditionSql) && (strpos($this->conditionSql, 'paleo.') !== false || strpos($this->conditionSql, 'early.myaStart') !== false)) ||
+    			(!empty($this->customWhereSql) && (strpos($this->customWhereSql, 'paleo.') !== false || strpos($this->customWhereSql, 'early.myaStart') !== false))){
+    				$this->includePaleo = true;
+    	} elseif (!empty($this->collArr)) {
+    		foreach ($this->collArr as $coll) {
+    			if (!empty($coll['colltype']) && $coll['colltype'] === 'Fossil Specimens'){
+    				//Activate if any one collection manages paleo specimens
+    				$this->includePaleo = true;
+    				break;
+    			}
+    		}
+    	}
+    }
+
 	public function addCondition($field, $cond, $value = ''){
 		$cond = strtoupper(trim($cond));
 		if (!preg_match('/^[A-Za-z]+$/', $field)) return false;
@@ -1894,22 +1910,6 @@ class DwcArchiverCore extends Manager{
 			$stmt->close();
 		}
 		return $status;
-	}
-
-	private function setIncludePaleo(){
-		if ((!empty($GLOBALS['ACTIVATE_PALEO'])) ||
-			(!empty($this->conditionSql) && (strpos($this->conditionSql, 'paleo.') !== false || strpos($this->conditionSql, 'early.myaStart') !== false)) ||
-			(!empty($this->customWhereSql) && (strpos($this->customWhereSql, 'paleo.') !== false || strpos($this->customWhereSql, 'early.myaStart') !== false))){
-			$this->includePaleo = true;
-		} elseif (!empty($this->collArr)) {
-			foreach ($this->collArr as $coll) {
-				if (!empty($coll['colltype']) && $coll['colltype'] === 'Fossil Specimens'){
-					//Activate if any one collection manages paleo specimens
-					$this->includePaleo = true;
-					break;
-				}
-			}
-		}
 	}
 
 	private function writeDeterminationFile($targetFile){
