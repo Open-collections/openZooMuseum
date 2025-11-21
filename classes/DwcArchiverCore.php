@@ -49,7 +49,6 @@ class DwcArchiverCore extends Manager{
 	protected $includeMaterialSample = 0;
 	protected $includeIdentifiers = 0;
 	protected $includeAssociations = 0;
-	private $hasPaleo = false;
 	private $includePaleo = false;
 	private $includeAcceptedNameUsage = false;
 	private $redactLocalities = 1;
@@ -197,59 +196,6 @@ class DwcArchiverCore extends Manager{
 			}
 		}
 	}
-
-	public function getCollArr($id = 0){
-		if ($id && isset($this->collArr[$id])) return $this->collArr[$id];
-		return $this->collArr;
-	}
-
-	public function setCustomWhereSql($sql){
-		$this->customWhereSql = $sql;
-	}
-
-	public function setPaleoWithSql($sql){
-		$this->paleoWithSql = $sql;
-	}
-
-	public function setPolygons($polygons) {
-		$this->polygons = $polygons;
-	}
-
-	public function getPolygons() {
-		return $this->polygons;
-	}
-
-	private function setIncludePaleo(){
-		if ((!empty($GLOBALS['ACTIVATE_PALEO'])) ||
-				(!empty($this->conditionSql) && (strpos($this->conditionSql, 'paleo.') !== false || strpos($this->conditionSql, 'early.myaStart') !== false)) ||
-				(!empty($this->customWhereSql) && (strpos($this->customWhereSql, 'paleo.') !== false || strpos($this->customWhereSql, 'early.myaStart') !== false))){
-					$this->includePaleo = true;
-		} elseif (!empty($this->collArr)) {
-			foreach ($this->collArr as $coll) {
-				if (!empty($coll['colltype']) && $coll['colltype'] === 'Fossil Specimens'){
-					//Activate if any one collection manages paleo specimens
-					$this->includePaleo = true;
-					break;
-				}
-			}
-		}
-	}
-
-    private function setIncludePaleo(){
-    	if ((!empty($GLOBALS['ACTIVATE_PALEO'])) ||
-    			(!empty($this->conditionSql) && (strpos($this->conditionSql, 'paleo.') !== false || strpos($this->conditionSql, 'early.myaStart') !== false)) ||
-    			(!empty($this->customWhereSql) && (strpos($this->customWhereSql, 'paleo.') !== false || strpos($this->customWhereSql, 'early.myaStart') !== false))){
-    				$this->includePaleo = true;
-    	} elseif (!empty($this->collArr)) {
-    		foreach ($this->collArr as $coll) {
-    			if (!empty($coll['colltype']) && $coll['colltype'] === 'Fossil Specimens'){
-    				//Activate if any one collection manages paleo specimens
-    				$this->includePaleo = true;
-    				break;
-    			}
-    		}
-    	}
-    }
 
 	public function addCondition($field, $cond, $value = ''){
 		$cond = strtoupper(trim($cond));
@@ -433,7 +379,7 @@ class DwcArchiverCore extends Manager{
 	public function getAsJson(){
 		$this->schemaType = 'dwc';
 		$arr = $this->getDwcArray();
-		return json_encode($arr[0]);
+		return json_encode(current($arr));
 	}
 
 	/**
@@ -701,131 +647,9 @@ class DwcArchiverCore extends Manager{
 	}
 
 	public function getDwcArray(){
-		$retArr = array();
-		$dwcOccurManager = new DwcArchiverOccurrence($this->conn);
-		$dwcOccurManager->setSchemaType($this->schemaType);
-		$dwcOccurManager->setExtended($this->extended);
-		$dwcOccurManager->setIncludeAcceptedNameUsage($this->includeAcceptedNameUsage);
-		$this->setIncludePaleo();
-		$dwcOccurManager->setIncludePaleo($this->includePaleo);
-
-		if (!$this->occurrenceFieldArr) $this->occurrenceFieldArr = $dwcOccurManager->getOccurrenceArr($this->schemaType, $this->extended);
-		$this->applyConditions();
-		$this->setIncludePaleo();
-
-		if (!$this->conditionSql) return false;
-		$sql = $dwcOccurManager->getSqlOccurrences($this->occurrenceFieldArr['fields']);
-		$sql .= $this->getTableJoins() . $this->conditionSql;
-		if (!$sql) return false;
-		$sql .= ' LIMIT 1000000';
-		$fieldArr = $this->occurrenceFieldArr['fields'];
-		if ($this->schemaType == 'dwc' || $this->schemaType == 'pensoft') {
-			unset($fieldArr['recordSecurity']);
-		}
-		if ($this->schemaType == 'dwc' || $this->schemaType == 'pensoft' || $this->schemaType == 'backup') {
-			unset($fieldArr['collID']);
-		}
-
-		$dwcOccurManager->setUpperTaxonomy();
-		$dwcOccurManager->setTaxonRank();
-		if ($rs = $this->conn->query($sql)) {
-			$typeArr = null;
-			if ($this->schemaType == 'pensoft') {
-				$typeArr = array('Other material', 'Holotype', 'Paratype', 'Isotype', 'Isoparatype', 'Isolectotype', 'Isoneotype', 'Isosyntype');
-				//$typeArr = array('Other material', 'Holotype', 'Paratype', 'Hapantotype', 'Syntype', 'Isotype', 'Neotype', 'Lectotype', 'Paralectotype', 'Isoparatype', 'Isolectotype', 'Isoneotype', 'Isosyntype');
-			}
-			$this->setServerDomain();
-			$urlPathPrefix = $this->serverDomain . $GLOBALS['CLIENT_ROOT'] . (substr($GLOBALS['CLIENT_ROOT'], -1) == '/' ? '' : '/');
-			$cnt = 0;
-			while ($r = $rs->fetch_assoc()) {
-				if(!$this->collArr) $this->setCollArr($r['collID']);
-				//Protect sensitive records
-				if ($this->redactLocalities && $r["recordSecurity"] == 1 && !in_array($r['collID'], $this->rareReaderArr)) {
-					$protectedFields = array();
-					foreach ($this->securityArr as $v) {
-						if (array_key_exists($v, $r) && $r[$v]) {
-							$r[$v] = '';
-							$protectedFields[] = $v;
-						}
-					}
-					if ($protectedFields) {
-						$r['informationWithheld'] = trim($r['informationWithheld'] . '; field values redacted: ' . implode(', ', $protectedFields), ' ;');
-					}
-				}
-				if (!$r['occurrenceID']) {
-					//Set occurrence GUID based on GUID target, but only if occurrenceID field isn't already populated
-					$guidTarget = $this->collArr[$r['collID']]['guidtarget'];
-					if ($guidTarget == 'catalogNumber') {
-						$r['occurrenceID'] = $r['catalogNumber'];
-					} elseif ($guidTarget == 'symbiotaUUID') {
-						$r['occurrenceID'] = $r['recordID'];
-					}
-				}
-
-				$r['recordID'] = $r['recordID'];
-				//Add collection GUID based on management type
-				$managementType = $this->collArr[$r['collID']]['managementtype'];
-				if ($managementType && $managementType == 'Live Data') {
-					if (array_key_exists('collectionID', $r) && !$r['collectionID']) {
-						$guid = $this->collArr[$r['collID']]['collectionguid'];
-						if (strlen($guid) == 36) $guid = 'urn:uuid:' . $guid;
-						$r['collectionID'] = $guid;
-					}
-				}
-				if ($this->schemaType == 'dwc') {
-					unset($r['recordSecurity']);
-				}
-				if ($this->schemaType == 'dwc' || $this->schemaType == 'backup') {
-					unset($r['collID']);
-				}
-				if ($this->schemaType == 'pensoft') {
-					unset($r['recordSecurity']);
-					unset($r['collID']);
-					if ($r['typeStatus']) {
-						$typeValue = strtolower($r['typeStatus']);
-						$typeInvalid = true;
-						$invalidText = '';
-						foreach ($typeArr as $testStr) {
-							if ($typeValue == strtolower($testStr)) {
-								$typeInvalid = false;
-								break;
-							} elseif (stripos($typeValue, $testStr)) {
-								$invalidText = $r['typeStatus'];
-								$r['typeStatus'] = $testStr;
-								$typeInvalid = false;
-								break;
-							}
-						}
-						if ($typeInvalid) {
-							$invalidText = $r['typeStatus'];
-							$r['typeStatus'] = 'Other material';
-						}
-						if ($invalidText) {
-							if ($r['occurrenceRemarks']) $invalidText = $r['occurrenceRemarks'] . '; ' . $invalidText;
-							$r['occurrenceRemarks'] = $invalidText;
-						}
-					} else {
-						$r['typeStatus'] = 'Other material';
-					}
-				}
-
-				$dwcOccurManager->appendUpperTaxonomy($r);
-
-				if ($urlPathPrefix) $r['t_references'] = $urlPathPrefix . 'collections/individual/index.php?occid=' . $r['occid'];
-
-				foreach ($r as $rKey => $rValue) {
-					if (substr($rKey, 0, 2) == 't_') $rKey = substr($rKey, 2);
-					$retArr[$cnt][$rKey] = $rValue;
-				}
-				$cnt++;
-			}
-			$rs->free();
-			//$retArr[0]['associatedMedia'] = $this->getAssociatedMedia();
-		} else {
-			$this->logOrEcho("ERROR creating occurrence file: " . $this->conn->error . "\n");
-			$this->logOrEcho("\tSQL: " . $sql . "\n");
-		}
-		return $retArr;
+		$dwcArr = array();
+		$this->processOccurrenceData($dwcArr, 'array');
+		return $dwcArr;
 	}
 
 	private function getAssociatedMedia(){
@@ -1561,7 +1385,6 @@ class DwcArchiverCore extends Manager{
 
 		$this->setServerDomain();
 		$urlPathPrefix = $this->serverDomain . $GLOBALS['CLIENT_ROOT'] . (substr($GLOBALS['CLIENT_ROOT'], -1) == '/' ? '' : '/');
-
 		$localDomain = $this->serverDomain;
 
 		$linkElem = $newDoc->createElement('link');
@@ -1648,7 +1471,13 @@ class DwcArchiverCore extends Manager{
 		return $newDoc->saveXML();
 	}
 
-	//Generate Data files
+	public function getOccurrenceFile(){
+		$this->setTargetPath();
+		$occurFile = $this->targetPath . $this->ts . '-occur' . $this->fileExt;
+		$filePath = $this->writeOccurrenceFile($occurFile);
+		return $filePath;
+	}
+
 	private function writeOccurrenceFile($filePath){
 		$this->logOrEcho('Creating occurrence file (' . date('h:i:s A') . ')... ');
 		$fh = fopen($filePath, 'w');
@@ -1656,9 +1485,23 @@ class DwcArchiverCore extends Manager{
 			$this->logOrEcho('ERROR establishing output file (' . $filePath . '), perhaps target folder is not readable by web server.');
 			return false;
 		}
-		$hasRecords = false;
-		$this->setServerDomain();
 
+		$recordCount = $this->processOccurrenceData($fh);
+
+		fclose($fh);
+		if (!$recordCount) {
+			$filePath = false;
+			//$this->writeOutRecord($fh,array('No records returned. Modify query variables to be more inclusive.'));
+			$this->errorMessage = 'No records returned. Modify query variables to be more inclusive.';
+			$this->logOrEcho($this->errorMessage);
+		}
+		$this->logOrEcho('Done! (' . date('h:i:s A') . ")\n", 1);
+		return $filePath;
+	}
+
+	private function processOccurrenceData(&$outputHandler, $handlerType = 'fileHandler'){
+		$recordCount = 0;
+		$this->setServerDomain();
 		$dwcOccurManager = new DwcArchiverOccurrence($this->conn);
 		$dwcOccurManager->setSchemaType($this->schemaType, $this->observerUid);
 		$dwcOccurManager->setExtended($this->extended);
@@ -1667,7 +1510,6 @@ class DwcArchiverCore extends Manager{
 		$dwcOccurManager->setIncludePaleo($this->includePaleo);
 		$dwcOccurManager->setServerDomain($this->serverDomain);
 		if (!$this->occurrenceFieldArr) $this->occurrenceFieldArr = $dwcOccurManager->getOccurrenceArr($this->schemaType, $this->extended);
-		//Output records
 		$this->applyConditions();
 		if (!$this->conditionSql) return false;
 		$dwcOccurManager->setIncludePaleo($this->includePaleo);
@@ -1682,31 +1524,10 @@ class DwcArchiverCore extends Manager{
 			$sql = $dwcOccurManager->getSqlOccurrences($this->occurrenceFieldArr['fields']);
 			if ($this->paleoWithSql) $sql = $this->paleoWithSql . $sql;
 			if ($this->schemaType != 'backup') $sql .= ' LIMIT 1000000';
-			//Output header
-			$fieldArr = $this->occurrenceFieldArr['fields'];
-			if ($this->schemaType == 'dwc' || $this->schemaType == 'pensoft') {
-				unset($fieldArr['recordSecurity']);
-				unset($fieldArr['collID']);
-				unset($fieldArr['biota']);
-				unset($fieldArr['earlyInterval']);
-				unset($fieldArr['lateInterval']);
-			} elseif ($this->schemaType == 'backup') unset($fieldArr['collID']);
-			$fieldOutArr = array();
-			if ($this->schemaType == 'coge') {
-				//Convert to GeoLocate flavor
-				$glFields = array(
-					'specificEpithet' => 'Species', 'scientificNameAuthorship' => 'ScientificNameAuthor', 'recordedBy' => 'Collector', 'recordNumber' => 'CollectorNumber',
-					'year' => 'YearCollected', 'month' => 'MonthCollected', 'day' => 'DayCollected', 'decimalLatitude' => 'Latitude', 'decimalLongitude' => 'Longitude',
-					'minimumElevationInMeters' => 'MinimumElevation', 'maximumElevationInMeters' => 'MaximumElevation', 'maximumDepthInMeters' => 'MaximumDepth',
-					'minimumDepthInMeters' => 'MinimumDepth','occurrenceRemarks' => 'Notes', 'collID' => 'collId', 'recordID' => 'recordId'
-				);
-				foreach ($fieldArr as $k => $v) {
-					if (array_key_exists($k, $glFields)) $fieldOutArr[] = $glFields[$k];
-					else $fieldOutArr[] = strtoupper(substr($k, 0, 1)) . substr($k, 1);
-				}
-			} else $fieldOutArr = array_keys($fieldArr);
-			if ($this->schemaType == 'dwc') unset($fieldOutArr[array_search('eventDate2', $fieldOutArr)]);
-			$this->writeOutRecord($fh, $fieldOutArr);
+			if ($handlerType == 'fileHandler'){
+				$hearderArr = $this->getHeaderArr();
+				if($hearderArr) $this->writeOutRecord($outputHandler, $hearderArr);
+			}
 			if ($rs = $this->conn->query($sql)) {
 				$urlPathPrefix = $this->serverDomain . $GLOBALS['CLIENT_ROOT'] . (substr($GLOBALS['CLIENT_ROOT'], -1) == '/' ? '' : '/');
 				$typeArr = null;
@@ -1715,14 +1536,14 @@ class DwcArchiverCore extends Manager{
 					//$typeArr = array('Other material', 'Holotype', 'Paratype', 'Hapantotype', 'Syntype', 'Isotype', 'Neotype', 'Lectotype', 'Paralectotype', 'Isoparatype', 'Isolectotype', 'Isoneotype', 'Isosyntype');
 				}
 				/*
-				$pubID = 0;
-				if($this->publicationGuid && $this->requestPortalGuid){
-					$portalManager = new PortalIndex();
-					$pubArr = array('pubTitle' => 'Symbiota Portal Index export - '.date('Y-m-d'), 'portalID' => $this->requestPortalGuid, 'direction' => 'export', 'lastDateUpdate' => date('Y-m-d h:i:s'), 'guid' => $this->publicationGuid);
-					$pubID = $portalManager->createPortalPublication($pubArr);
-					if ($pubID && $portalManager) $portalManager->insertPortalOccurrences($pubID);
-				}
-				*/
+				 $pubID = 0;
+				 if($this->publicationGuid && $this->requestPortalGuid){
+				 $portalManager = new PortalIndex();
+				 $pubArr = array('pubTitle' => 'Symbiota Portal Index export - '.date('Y-m-d'), 'portalID' => $this->requestPortalGuid, 'direction' => 'export', 'lastDateUpdate' => date('Y-m-d h:i:s'), 'guid' => $this->publicationGuid);
+				 $pubID = $portalManager->createPortalPublication($pubArr);
+				 if ($pubID && $portalManager) $portalManager->insertPortalOccurrences($pubID);
+				 }
+				 */
 				$statsManager = new OccurrenceAccessStats();
 				$sqlFrag = substr($sql, strpos($sql, 'WHERE '));
 				if($p = strpos($sqlFrag, 'LIMIT ')) $sqlFrag = substr($sqlFrag, 0, $p);
@@ -1760,7 +1581,6 @@ class DwcArchiverCore extends Manager{
 						// Skip record because there is no occurrenceID guid
 						continue;
 					}
-					$hasRecords = true;
 					//Protect sensitive records
 					if ($this->redactLocalities && $r['recordSecurity'] == 1 && !in_array($r['collID'], $this->rareReaderArr)) {
 						$protectedFields = array();
@@ -1773,7 +1593,7 @@ class DwcArchiverCore extends Manager{
 						if ($protectedFields) $r['informationWithheld'] = trim($r['informationWithheld'] . '; field values redacted: ' . implode(', ', $protectedFields), ' ;');
 					}
 
-					if ($urlPathPrefix) $r['t_references'] = $urlPathPrefix . 'collections/individual/index.php?occid=' . $r['occid'];
+					$r['t_references'] = $urlPathPrefix . 'collections/individual/index.php?occid=' . $r['occid'];
 					//Add collection GUID based on management type
 					$managementType = $this->collArr[$r['collID']]['managementtype'];
 					if ($managementType && $managementType == 'Live Data') {
@@ -1787,7 +1607,6 @@ class DwcArchiverCore extends Manager{
 						//Apply DwC output requirements
 						unset($r['recordSecurity']);
 						unset($r['collID']);
-						unset($r['biota']);
 
 						//Format dates
 						if($r['eventDate']){
@@ -1840,6 +1659,9 @@ class DwcArchiverCore extends Manager{
 							if(!empty($r['biota'])){
 								$r['locality'] .= ($r['locality'] ? '; ' : '') . 'Biota: ' . $r['biota'];
 							}
+							unset($r['biota']);
+							unset($r['earlyInterval']);
+							unset($r['lateInterval']);
 						}
 					}
 
@@ -1847,8 +1669,19 @@ class DwcArchiverCore extends Manager{
 						$r['dynamicProperties'] = json_encode($r['dynamicProperties']);
 					}
 					$this->encodeArr($r);
-					$this->addcslashesArr($r);
-					$this->writeOutRecord($fh, $r);
+					$recordCount ++;
+					if ($handlerType == 'fileHandler'){
+						//Stream data to output file
+						$this->addcslashesArr($r);
+						$this->writeOutRecord($outputHandler, $r);
+					}
+					else{
+						//Add data to array
+						foreach ($r as $rKey => $rValue) {
+							if (substr($rKey, 0, 2) == 't_') $rKey = substr($rKey, 2);
+							$outputHandler[$recordCount][$rKey] = $rValue;
+						}
+					}
 				}
 				$rs->free();
 			}
@@ -1856,29 +1689,47 @@ class DwcArchiverCore extends Manager{
 				$this->errorMessage = 'ERROR creating occurrence file: ' . $this->conn->error;
 				$this->logOrEcho($this->errorMessage);
 			}
-			fclose($fh);
-			if (!$hasRecords) {
-				$filePath = false;
-				//$this->writeOutRecord($fh,array('No records returned. Modify query variables to be more inclusive.'));
-				$this->errorMessage = 'No records returned. Modify query variables to be more inclusive.';
-				$this->logOrEcho($this->errorMessage);
-			}
-			$this->logOrEcho('Done! (' . date('h:i:s A') . ")\n", 1);
 		}
-		return $filePath;
+		return $recordCount;
 	}
 
-	public function getOccurrenceFile(){
-		$this->setTargetPath();
-		$occurFile = $this->targetPath . $this->ts . '-occur' . $this->fileExt;
-		$filePath = $this->writeOccurrenceFile($occurFile);
-		return $filePath;
+	private function getHeaderArr(): array{
+		$headerArr = array();
+		$fieldArr = $this->occurrenceFieldArr['fields'];
+		if ($this->schemaType == 'dwc' || $this->schemaType == 'pensoft') {
+			//Remove fields needed for evaluation further in code but are removed before data output
+			unset($fieldArr['recordSecurity']);
+			unset($fieldArr['collID']);
+			unset($fieldArr['biota']);
+			unset($fieldArr['earlyInterval']);
+			unset($fieldArr['lateInterval']);
+		} elseif ($this->schemaType == 'backup') unset($fieldArr['collID']);
+		if ($this->schemaType == 'coge') {
+			//Convert to GeoLocate flavor
+			$glFields = array(
+				'specificEpithet' => 'Species', 'scientificNameAuthorship' => 'ScientificNameAuthor', 'recordedBy' => 'Collector', 'recordNumber' => 'CollectorNumber',
+				'year' => 'YearCollected', 'month' => 'MonthCollected', 'day' => 'DayCollected', 'decimalLatitude' => 'Latitude', 'decimalLongitude' => 'Longitude',
+				'minimumElevationInMeters' => 'MinimumElevation', 'maximumElevationInMeters' => 'MaximumElevation', 'maximumDepthInMeters' => 'MaximumDepth',
+				'minimumDepthInMeters' => 'MinimumDepth','occurrenceRemarks' => 'Notes', 'collID' => 'collId', 'recordID' => 'recordId'
+			);
+			foreach ($fieldArr as $k => $v) {
+				if (array_key_exists($k, $glFields)) $headerArr[] = $glFields[$k];
+				else $headerArr[] = strtoupper(substr($k, 0, 1)) . substr($k, 1);
+			}
+		} else $headerArr = array_keys($fieldArr);
+		if ($this->schemaType == 'dwc') unset($headerArr[array_search('eventDate2', $headerArr)]);
+		return $headerArr;
 	}
 
 	private function primeStagingTables(){
 		$status = false;
-		$uid = $GLOBALS['SYMB_UID'] ?? null;
-		$tagName = (!empty($GLOBALS['SYMB_UID']) ? 'UID-' . $GLOBALS['SYMB_UID'] : $_SERVER['REMOTE_ADDR']) . '-' . time();
+		$uid = $GLOBALS['SYMB_UID'];
+		$tagName = 'UID-' . $uid;
+		if(!$uid){
+			$uid = null;
+			$tagName = $_SERVER['REMOTE_ADDR'] . '-' . time();
+		}
+		$tagName .= '-' . time();
 		$queryTerms = $this->conditionSql;
 		$fileUrl = $this->dwcaOutputUrl;
 		$domainName = $this->serverDomain;
@@ -2182,17 +2033,7 @@ class DwcArchiverCore extends Manager{
 		return true;
 	}
 
-	// misc support functions
-	//getters, setters, and misc functions
-	public function setOverrideConditionLimit($bool){
-		if ($bool) $this->overrideConditionLimit = true;
-		else $this->overrideConditionLimit = false;
-	}
-
-	public function setObserverUid($uid){
-		if(is_numeric($uid)) $this->observerUid = $uid;
-	}
-
+	//misc support functions
 	public function getOccurrenceCount(){
 		//Used within coge_getCount rpc handler
 		$retStr = 0;
@@ -2206,66 +2047,6 @@ class DwcArchiverCore extends Manager{
 			$rs->free();
 		}
 		return $retStr;
-	}
-
-	public function setSchemaType($type){
-		//dwc, symbiota, backup, coge
-		if (in_array($type, array('dwc', 'backup', 'coge', 'pensoft'))) {
-			$this->schemaType = $type;
-		} else {
-			$this->schemaType = 'symbiota';
-		}
-	}
-
-	public function setLimitToGuids($testValue){
-		if ($testValue) $this->limitToGuids = true;
-	}
-
-	public function setExtended($e){
-		$this->extended = $e;
-	}
-
-	public function setDelimiter($d){
-		if ($d == 'tab' || $d == "\t") {
-			$this->delimiter = "\t";
-			$this->fileExt = '.tab';
-		} elseif ($d == 'csv' || $d == 'comma' || $d == ',') {
-			$this->delimiter = ",";
-			$this->fileExt = '.csv';
-		} elseif ($d) {
-			$this->delimiter = $d;
-			$this->fileExt = '.txt';
-		}
-	}
-
-	public function setIncludeDets($includeDets){
-		if($includeDets) $this->includeDets = true;
-		else $this->includeDets = false;
-	}
-
-	public function setIncludeImgs($includeImgs){
-		if($includeImgs) $this->includeImgs = true;
-		else $this->includeImgs = false;
-	}
-
-	public function setIncludeAttributes($include){
-		if($include) $this->includeAttributes = true;
-		else $this->includeAttributes = false;
-	}
-
-	public function setIncludeMaterialSample($include){
-		if($include) $this->includeMaterialSample = true;
-		else $this->includeMaterialSample = false;
-	}
-
-	public function setIncludeIdentifiers($include){
-		if($include) $this->includeIdentifiers = true;
-		else $this->includeIdentifiers = false;
-	}
-
-	public function setIncludeAssociations($include){
-		if($include) $this->includeAssociations = true;
-		else $this->includeAssociations = false;
 	}
 
 	public function hasAttributes($collid = false){
@@ -2329,6 +2110,113 @@ class DwcArchiverCore extends Manager{
 		return $bool;
 	}
 
+	//setters and getters
+	public function getCollArr($id = 0){
+		if ($id && isset($this->collArr[$id])) return $this->collArr[$id];
+		return $this->collArr;
+	}
+
+	public function setCustomWhereSql($sql){
+		$this->customWhereSql = $sql;
+	}
+
+	public function setPaleoWithSql($sql){
+		$this->paleoWithSql = $sql;
+	}
+
+	public function setPolygons($polygons) {
+		$this->polygons = $polygons;
+	}
+
+	public function getPolygons() {
+		return $this->polygons;
+	}
+
+	private function setIncludePaleo(){
+		if ((!empty($GLOBALS['ACTIVATE_PALEO'])) ||
+				(!empty($this->conditionSql) && (strpos($this->conditionSql, 'paleo.') !== false || strpos($this->conditionSql, 'early.myaStart') !== false)) ||
+				(!empty($this->customWhereSql) && (strpos($this->customWhereSql, 'paleo.') !== false || strpos($this->customWhereSql, 'early.myaStart') !== false))){
+					$this->includePaleo = true;
+		} elseif (!empty($this->collArr)) {
+			foreach ($this->collArr as $coll) {
+				if (!empty($coll['colltype']) && $coll['colltype'] === 'Fossil Specimens'){
+					//Activate if any one collection manages paleo specimens
+					$this->includePaleo = true;
+					break;
+				}
+			}
+		}
+	}
+
+	public function setOverrideConditionLimit($bool){
+		if ($bool) $this->overrideConditionLimit = true;
+		else $this->overrideConditionLimit = false;
+	}
+
+	public function setObserverUid($uid){
+		if(is_numeric($uid)) $this->observerUid = $uid;
+	}
+
+	public function setSchemaType($type){
+		//dwc, symbiota, backup, coge
+		if (in_array($type, array('dwc', 'backup', 'coge', 'pensoft'))) {
+			$this->schemaType = $type;
+		} else {
+			$this->schemaType = 'symbiota';
+		}
+	}
+
+	public function setLimitToGuids($testValue){
+		if ($testValue) $this->limitToGuids = true;
+	}
+
+	public function setExtended($e){
+		$this->extended = $e;
+	}
+
+	public function setDelimiter($d){
+		if ($d == 'tab' || $d == "\t") {
+			$this->delimiter = "\t";
+			$this->fileExt = '.tab';
+		} elseif ($d == 'csv' || $d == 'comma' || $d == ',') {
+			$this->delimiter = ",";
+			$this->fileExt = '.csv';
+		} elseif ($d) {
+			$this->delimiter = $d;
+			$this->fileExt = '.txt';
+		}
+	}
+
+	public function setIncludeDets($includeDets){
+		if($includeDets) $this->includeDets = true;
+		else $this->includeDets = false;
+	}
+
+	public function setIncludeImgs($includeImgs){
+		if($includeImgs) $this->includeImgs = true;
+		else $this->includeImgs = false;
+	}
+
+	public function setIncludeAttributes($include){
+		if($include) $this->includeAttributes = true;
+		else $this->includeAttributes = false;
+	}
+
+	public function setIncludeMaterialSample($include){
+		if($include) $this->includeMaterialSample = true;
+		else $this->includeMaterialSample = false;
+	}
+
+	public function setIncludeIdentifiers($include){
+		if($include) $this->includeIdentifiers = true;
+		else $this->includeIdentifiers = false;
+	}
+
+	public function setIncludeAssociations($include){
+		if($include) $this->includeAssociations = true;
+		else $this->includeAssociations = false;
+	}
+
 	public function setRedactLocalities($redact){
 		$this->redactLocalities = $redact;
 	}
@@ -2364,7 +2252,6 @@ class DwcArchiverCore extends Manager{
 		$this->geolocateVariables = $geolocateArr;
 	}
 
-	//Misc functions
 	public function setServerDomain($domain = ''){
 		if ($domain) {
 			$this->serverDomain = $domain;
@@ -2382,6 +2269,7 @@ class DwcArchiverCore extends Manager{
 		return $this->dwcaOutputUrl;
 	}
 
+	//Output cleaning functions
 	protected function encodeArr(&$inArr){
 		if ($this->charSetSource && $this->charSetOut != $this->charSetSource) {
 			foreach ($inArr as $k => $v) {
