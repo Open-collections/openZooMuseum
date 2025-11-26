@@ -1,9 +1,10 @@
 <?php
 include_once('../../../config/symbini.php');
 include_once($SERVER_ROOT.'/classes/OccurrenceLoans.php');
-if($LANG_TAG != 'en' && file_exists($SERVER_ROOT.'/content/lang/collections/loans/reports/defaultmailinglabel.'.$LANG_TAG.'.php')) include_once($SERVER_ROOT.'/content/lang/collections/loans/reports/defaultmailinglabel.'.$LANG_TAG.'.php');
-else include_once($SERVER_ROOT.'/content/lang/collections/loans/reports/defaultmailinglabel.en.php');
 require_once $SERVER_ROOT.'/vendor/phpoffice/phpword/bootstrap.php';
+include_once($SERVER_ROOT . '/classes/utilities/Language.php');
+
+Language::load('collections/loans/reports/defaultmailinglabel');
 
 $collId = $_REQUEST['collid'];
 $outputMode = $_POST['outputmode'];
@@ -77,7 +78,7 @@ if($outputMode == 'doc'){
 	$textrun->addText(htmlspecialchars($invoiceArr['city'].($invoiceArr['stateprovince']?', ':'').$invoiceArr['stateprovince'].' '.$invoiceArr['postalcode']),'toAddressFont');
 	$textrun->addTextBreak(1);
 	$textrun->addText(htmlspecialchars($invoiceArr['country']),'toAddressFont');
-	$targetFile = $SERVER_ROOT.'/temp/report/'.$PARAMS_ARR['un'].'_mailing_label.docx';
+	$targetFile = $TEMP_DIR_ROOT . '/' . $PARAMS_ARR['un'] . '_mailing_label.docx';
 	$phpWord->save($targetFile, 'Word2007');
 
 	ob_start();

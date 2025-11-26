@@ -7,41 +7,38 @@ include_once($SERVER_ROOT . "/classes/MediaException.php");
 include_once($SERVER_ROOT . '/classes/utilities/QueryUtil.php');
 include_once($SERVER_ROOT . '/classes/utilities/OccurrenceUtil.php');
 include_once($SERVER_ROOT . '/classes/utilities/UploadUtil.php');
+include_once($SERVER_ROOT . '/classes/utilities/Language.php');
 
-if(file_exists($SERVER_ROOT.'/content/lang/classes/Media.'.$LANG_TAG.'.php')) {
-	include_once($SERVER_ROOT.'/content/lang/classes/Media.'.$LANG_TAG.'.php');
-} else {
-	include_once($SERVER_ROOT.'/content/lang/classes/Media.en.php');
-}
+Language::load('classes/Media');
 
 function get_occurrence_upload_path($institutioncode, $collectioncode, $catalognumber = null) {
-		$root = $institutioncode . ($collectioncode? '_'. $collectioncode: '') . '/';
+	$root = $institutioncode . ($collectioncode? '_'. $collectioncode: '') . '/';
 
-		if($catalognumber) {
-			//Clean out Symbols that would interfere with
-			$derived_cat_num = str_replace(array('/','\\',' '), '', $catalognumber);
+	if($catalognumber) {
+		//Clean out Symbols that would interfere with
+		$derived_cat_num = str_replace(array('/','\\',' '), '', $catalognumber);
 
-			//Grab any characters in the range of 0-8 then any amount digits
-			if(preg_match('/^(\D{0,8}\d{4,})/', $derived_cat_num, $matches)){
-				//Truncate cat number to keep directories from getting out of hand
-				$derived_cat_num = substr($matches[1], 0, -3);
+		//Grab any characters in the range of 0-8 then any amount digits
+		if(preg_match('/^(\D{0,8}\d{4,})/', $derived_cat_num, $matches)){
+			//Truncate cat number to keep directories from getting out of hand
+			$derived_cat_num = substr($matches[1], 0, -3);
 
-				//If derived catalog number is a number less then five pad front with 0's
-				if(is_numeric($derived_cat_num) && strlen($derived_cat_num) < 5) {
-					$derived_cat_num = str_pad($derived_cat_num, 5, "0", STR_PAD_LEFT);
-				}
-
-				$root .= $derived_cat_num . '/';
-			//backup catalogNumber
-			} else {
-				$root .= '00000/';
+			//If derived catalog number is a number less then five pad front with 0's
+			if(is_numeric($derived_cat_num) && strlen($derived_cat_num) < 5) {
+				$derived_cat_num = str_pad($derived_cat_num, 5, "0", STR_PAD_LEFT);
 			}
-		//Use date as a backup so that main directory doesn't get filled up but can debug
-		} else {
-			$root .= date('Ym') . '/';
-		}
 
-		return $root;
+			$root .= $derived_cat_num . '/';
+			//backup catalogNumber
+		} else {
+			$root .= '00000/';
+		}
+		//Use date as a backup so that main directory doesn't get filled up but can debug
+	} else {
+		$root .= date('Ym') . '/';
+	}
+
+	return str_replace(' ', '_', $root);
 }
 
 class Media {
@@ -49,7 +46,6 @@ class Media {
 	private static $mediaRootUrl;
 
 	private static $errors = [];
-	private static $storage_driver = LocalStorage::class;
 
 	private const DEFAULT_THUMBNAIL_WIDTH_PX = 200;
 	private const DEFAULT_WEB_WIDTH_PX = 1600;
@@ -84,15 +80,15 @@ class Media {
 		'm.rights',
 		'm.sortSequence',
 		'm.sortOccurrence',
+		// Older schema term that can be "specimen", "field", or NULL
+		// More in reference the subject of the media
+		'm.imageType',
+		'm.initialtimestamp',
 		"IFNULL(m.creator,CONCAT_WS(' ',u.firstname,u.lastname)) AS creatorDisplay",
 		't.sciname',
 		't.author',
 		't.rankid'
 	];
-
-	public static function setStorageDriver(StorageStrategy $storage_driver): void {
-		$this->storage_driver = $storage_driver::class;
-	}
 
 	private static function getMediaRootPath(): string {
 		if(self::$mediaRootPath) {
@@ -188,6 +184,7 @@ class Media {
 	/**
 	 * @param mixed $url
 	 * @param mixed $text
+	 * @return string
 	 */
 	static function render_media_link($url, $text) {
 		$slash_route = substr($url, 0, 1) == '/';
@@ -198,6 +195,22 @@ class Media {
 		$clean_text = htmlspecialchars($text, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
 
 		return '<a href="' . $clean_url . '">'. $clean_text . '</a>';
+	}
+
+	/**
+	 * Creates html option output for users
+	 *
+	 * @param ?int $userId What user id is selected
+	 * @return string
+	 */
+	static function renderCreatorOptions(?int $userId = null): string {
+		$html = '';
+
+		foreach(self::getCreatorArray() as $id => $uname) {
+			$html .= "<option value='" . $id ."' ".($id == $userId ?"SELECTED":"") . ">" . $uname . '</option>';
+		}
+
+		return $html;
 	}
 
 	/**
@@ -232,8 +245,8 @@ class Media {
 			'cdr' => ['image/cdr', 'image/x-cdr'],
 			'gif' => 'image/gif',
 			'ico' => ['image/x-icon', 'image/x-ico', 'image/vnd.microsoft.icon' ],
-			'jpg' => ['image/jpeg', 'image/jpeg', 'image/pjpeg'],
-			'jpeg' => ['image/jpeg', 'image/jpeg', 'image/pjpeg'],
+			'jpg' => ['image/jpeg', 'image/pjpeg'],
+			'jpeg' => ['image/jpeg', 'image/pjpeg'],
 			'jp2' => ['image/jp2', 'image/jpx', 'image/jpm'],
 			'png' => ['image/png', 'image/x-png'],
 			'psd' => 'image/vnd.adobe.photoshop',
@@ -252,7 +265,7 @@ class Media {
 			'm4a' => ['audio/mp4', 'audio/x-m4a'],
 			'mp4' => 'audio/mp4',
 			'mid' => 'audio/midi',
-			'mp3' => [ 'audio/mp3', 'audio/mpeg', 'audio/mpg', 'audio/mpeg3' ],
+			'mp3' => [ 'audio/mpeg', 'audio/mp3', 'audio/mpg', 'audio/mpeg3' ],
 			'ogg' => 'audio/ogg',
 			'ra' => 'audio/x-realaudio',
 			'ram' => 'audio/x-pn-realaudio',
@@ -368,20 +381,22 @@ class Media {
 		//Not Sure if I Need
 		$mapLargeImg = !($clean_post_arr['nolgimage']?? true);
 
-		$sql = <<< SQL
-		SELECT tidinterpreted 
-		FROM omoccurrences 
-		WHERE tidinterpreted IS NOT NULL AND occid = ? 
-		SQL;
+		if(empty($clean_post_arr['tid']) && !empty($clean_post_arr['occid'])){
+			$sql = <<< SQL
+			SELECT tidinterpreted 
+			FROM omoccurrences 
+			WHERE tidinterpreted IS NOT NULL AND occid = ? 
+			SQL;
 
-		$taxon_result = QueryUtil::executeQuery(
-			$conn,
-			$sql,
-			[$clean_post_arr['occid']]
-		);
+			$taxon_result = QueryUtil::executeQuery(
+				$conn,
+				$sql,
+				[$clean_post_arr['occid']]
+			);
 
-		if(!isset($clean_post_arr['tid']) && $row = $taxon_result->fetch_object()) {
-			$clean_post_arr['tid'] = $row->tidinterpreted;
+			if($row = $taxon_result->fetch_object()) {
+				$clean_post_arr['tid'] = $row->tidinterpreted;
+			}
 		}
 
 		if(!($clean_post_arr['copytoserver'] ?? false) && !($clean_post_arr['format'] ?? false)) {
@@ -398,8 +413,13 @@ class Media {
 			}
 		}
 
+		// Converts Deprecated mimes to proper mime type
+		if($real_mime = UploadUtil::DEPRECATED_MIME_CONVERSION[$clean_post_arr['format']] ?? false) {
+			$clean_post_arr['format'] = $real_mime;
+		}
+
 		if(!self::getAllowedMime($clean_post_arr['format'])) {
-			throw new MediaException(MediaException::FileTypeNotAllowed, ' ' . $file['type']);
+			throw new MediaException(MediaException::FileTypeNotAllowed, ' ' . $clean_post_arr['format']);
 		}
 
 		$keyValuePairs = [
@@ -445,7 +465,7 @@ class Media {
 		INSERT INTO media($keys) VALUES ($parameters)
 		SQL;
 
-		$result = QueryUtil::executeQuery($conn, $sql, array_values($keyValuePairs));
+		QueryUtil::executeQuery($conn, $sql, array_values($keyValuePairs));
 		//Insert to other tables as needed like imagetags...
 
 		$media_id = $conn->insert_id;
@@ -477,6 +497,11 @@ class Media {
 			if(!self::isValidFile($file) && ($post_arr['copytoserver'] ?? false)) {
 				$file = UploadUtil::downloadFromRemote($post_arr['originalUrl'], $GLOBALS['ALLOWED_MEDIA_MIME_TYPES']);
 				$createdFilepaths[] = $file['tmp_name'];
+			} else {
+				$pathInfo =	pathinfo($file['name']);
+				$pathInfo['filename'] = self::cleanFileName($pathInfo['filename']);
+				$file['name'] = $pathInfo['filename'] . '.' . $pathInfo['extension'];
+				$file['full_path'] = $file['name'];
 			}
 
 			if(self::isValidFile($file)) {
@@ -488,7 +513,7 @@ class Media {
 					$post_arr['sourceIdentifier'] = 'filename: ' . $file['name'];
 				}
 			}
-			
+
 			$media_metadata = self::insert($post_arr, $conn);
 			$media_type = MediaType::tryFrom($media_metadata['mediaType']);
 
@@ -516,10 +541,10 @@ class Media {
 				//Generate Deriatives if needed
 				if($media_type === MediaType::Image) {
 					$start_mem_limit = ini_get('memory_limit');
-					// Update mem limit if not set to 256M already
-					if(UploadUtil::size2Bytes(ini_get('memory_limit')) < UploadUtil::size2Bytes('256M')) {
-						ini_set('memory_limit', '256M');
-					}
+
+					// Dynamically set memory to fit enought to process it.
+					// It will throw error if set above max
+					self::setMemoryLimit($file['tmp_name']);
 
 					$size = getimagesize($file['tmp_name']);
 
@@ -531,9 +556,11 @@ class Media {
 					$width = $size[0];
 					$height = $size[1];
 
-					$storage->upload($file);
 
-					$urls = [ 
+					$storage->upload($file);
+					$createdFilepaths[] = $storage->getDirPath($file);
+
+					$urls = [
 						'thumbnailUrl' => [
 							'name' => self::addToFilename($file['name'], '_tn'),
 							'width' => $GLOBALS['IMG_TN_WIDTH']?? 200,
@@ -574,7 +601,9 @@ class Media {
 			mysqli_rollback($conn);
 
 			foreach($createdFilepaths as $filepath) {
-				unlink($filepath);
+				if(file_exists($filepath)) {
+					unlink($filepath);
+				}
 			}
 
 			array_push(self::$errors, $th->getMessage());
@@ -696,7 +725,7 @@ class Media {
 		return $errors;
 	}
 
-	private static function check_file_rename(string $old_filepath, string $new_filepath) {		
+	private static function check_file_rename(string $old_filepath, string $new_filepath) {
 		if($old_filepath && $new_filepath) {
 			$old_file = self::parseFileName($old_filepath);
 			$new_file = self::parseFileName($new_filepath);
@@ -768,7 +797,7 @@ class Media {
 			foreach(['url', 'thumbnailUrl', 'originalUrl'] as $url) {
 				if(array_key_exists($url, $data) && $storage->file_exists($current_media_arr[$url])) {
 					self::check_file_rename(
-						$current_media_arr[$url], 
+						$current_media_arr[$url],
 						$data[$url]
 					);
 				}
@@ -915,7 +944,7 @@ class Media {
 		$mime_type = $size['mime'];
 
 		if(!self::enough_memory_gd($size[0], $size[1])) {
-			throw new Exception('Not enough memory to create image: ' . $new_file);
+			throw new MediaException(MediaException::NotEnoughMemoryImage, ': ' . $new_file);
 		}
 
 		$orig_width = $width;
@@ -930,15 +959,26 @@ class Media {
 			$height = intval(($new_width / $width) * $height);
 			$width = $new_width;
 		}
+		$image = null;
 
-		$image = match($mime_type) {
-			'image/jpeg' => imagecreatefromjpeg($src_path),
-			'image/png' => imagecreatefrompng($src_path),
-			'image/gif' => imagecreatefromgif($src_path),
-			default => throw new Exception(
-				'Mime Type: ' . $mime_type . ' not supported for creation'
-			)
-		};
+		switch($mime_type) {
+			case 'image/jpeg':
+				$image = imagecreatefromjpeg($src_path);
+				break;
+			case 'image/png':
+				$image = imagecreatefrompng($src_path);
+				break;
+			case 'image/gif':
+				$image = imagecreatefromgif($src_path);
+				break;
+			case 'image/bmp':
+				$image = imagecreatefrombmp($src_path);
+				break;
+			default:
+				throw new Exception(
+					'Mime Type: ' . $mime_type . ' not supported for creation'
+				);
+		}
 
 		$new_image = imagecreatetruecolor($width, $height);
 
@@ -958,6 +998,69 @@ class Media {
 		}
 
 		imagedestroy($image);
+	}
+
+	/**
+	 * Dynamically allocate memory based on image dimensions, bit-depth and channels
+	 * Shamelessly stolen somewhere online years ago.
+	 * Probably from https://alvarotrigo.com/blog/allocate-memory-on-the-fly-PHP-image-resizing/
+	 *
+	 * @param string $filename Full path to a file supported by getimagesize() function
+	 * @param int $tweak_factor Multiplier for tweaking required memory. 1.8 seems fine. More info: http://php.net/imagecreatefromjpeg#76968
+	 * @param string $original_name Used purely for reporting actual file name instead of uploaded temp file (e.g. /tmp/RaNd0m.tmp)
+	 *
+	 * @return bool true on success or if no memory increase required, false if required memory amount is too large
+	 */
+	static function setMemoryLimit($filename, $tweak_factor = 1.8, $original_name = null): bool {
+
+		$maxMemoryUsage = 512 * 1024 * 1024; // 512MB
+		$width = 0;
+		$height = 0;
+		$memory_limit = UploadUtil::size2Bytes(ini_get('memory_limit'));
+
+		$memory_baseline_usage = memory_get_usage(true);
+
+		// Getting the image info
+		$info = @getimagesize($filename);
+		if( empty($info) ) {
+			throw new Exception( sprintf('ERROR: getimagesize("%s") returned: %s', $filename, print_r($info, true)) );
+			return false;
+		}
+
+		!empty($original_name) ? $filename = $original_name : $original_name;
+
+		$channels = isset($info['channels']) ? $info['channels'] : 3;
+		$width = $info[0];
+		$height = $info[1];
+
+		if($info['mime'] == 'image/png') {
+			$channels = 4;
+		}
+
+		if(!isset($info['bits'])) {
+			$info['bits'] = 16;
+		}
+		$bytes_per_channel = ( ($info['bits'] / 8) * $channels );
+
+		// Calculating the needed memory
+		$new_limit = $memory_baseline_usage + ($width * $height * $bytes_per_channel * $tweak_factor + 1048576);
+
+		if( $new_limit <= $memory_limit ) {
+			return true;
+		}
+
+		/* We don't want to allocate an extremely large amount of memory
+	so it's a good practice to define a limit and bail out if new limit is more than that */
+		if ($new_limit > $maxMemoryUsage) {
+			throw new Exception( sprintf( "Failed increasing memory limit to %dMB (max=%dMB) for file '%s' (%d x %d)", ceil( $new_limit / 1048576 ), ceil( $maxMemoryUsage / 1048576 ), $filename, $width, $height ) );
+			return false;
+		}
+
+		$new_limit = ceil( $new_limit / 1048576 );
+
+		// Updating the default value
+		ini_set('memory_limit', $new_limit.'M');
+		return true;
 	}
 
 	private static function enough_memory_gd($x, $y, $rgb = 3) {
@@ -1019,10 +1122,22 @@ class Media {
 
 			//Unlink all files
 			if($remove_files) {
+				$root_url = self::getMediaRootUrl();
+				$root_path = self::getMediaRootPath();
 				foreach($media_urls as $url) {
-					if($url && file_exists($GLOBALS['SERVER_ROOT'] . $url)) {
-						if(!unlink($GLOBALS['SERVER_ROOT'] . $url)) {
-							error_log("WARNING: File (path: " . $url . ") failed to delete from server");
+					if($url && $root_url) {
+						if(strpos($url, $root_url) === 0){		//Only images residing on local server can be deleted
+							//Convert url to a local path
+							$path = $root_path . substr($url, strlen($root_url));
+							if(file_exists($path)){
+								if(is_writable($path)) {
+									if(!unlink($path)) {
+										error_log("WARNING: File (path: " . $path . ") failed to delete from server");
+									}
+								} else{
+									throw new MediaException(MediaException::FilepathNotWritable, $path);
+								}
+							}
 						}
 					}
 				}
@@ -1066,11 +1181,40 @@ class Media {
 	 * @param int $tid
 	 * @param string $media_type Should use MediaType Constants
 	 */
-	public static function getByTid(int $tid, string $media_type = null): Array {
+	public static function getByTid(int $tid, string $media_type = null, ?Paginator $paginator): Array {
 		if(!$tid) return [];
 		$parameters = [$tid];
 
 		$sql ='SELECT ' . implode(',', self::MEDIA_ITEM_SELECT_SCHEMA) . ' FROM media m '.
+			'INNER JOIN taxstatus ts ON m.tid = ts.tid ' .
+			'INNER JOIN taxa t ON m.tid = t.tid ' .
+			// 'LEFT JOIN taxa t ON t.tid = m.tid ' .
+			'LEFT JOIN users u on u.uid = m.creatorUid ' .
+			'WHERE ts.tid = ? and ts.taxauthid = 1';
+
+		if($media_type) {
+			$sql .= ' AND mediaType = ?';
+			array_push($parameters, $media_type);
+		}
+
+		$sql .= ' ORDER BY m.sortsequence IS NULL ASC, m.sortsequence ASC';
+
+		if($paginator) {
+			$sql .= ' LIMIT ? OFFSET ?';
+			array_push($parameters, $paginator->perPage);
+			array_push($parameters, ($paginator->activePage- 1) * $paginator->perPage);
+		}
+
+		$results = QueryUtil::executeQuery(Database::connect('readonly'), $sql, $parameters);
+
+		return Sanitize::out(self::get_media_items($results));
+	}
+
+	public static function countByTid(int $tid, string $media_type = null): int {
+		if(!$tid) return 0;
+		$parameters = [$tid];
+
+		$sql ='SELECT ' . 'count(*) as cnt' . ' FROM media m '.
 			'LEFT JOIN taxa t ON t.tid = m.tid ' .
 			'LEFT JOIN users u on u.uid = m.creatorUid ' .
 			'WHERE m.tid = ?';
@@ -1080,10 +1224,9 @@ class Media {
 			array_push($parameters, $media_type);
 		}
 
-		$sql .= ' ORDER BY sortsequence IS NULL ASC, sortsequence ASC';
 		$results = QueryUtil::executeQuery(Database::connect('readonly'), $sql, $parameters);
 
-		return Sanitize::out(self::get_media_items($results));
+		return $results->fetch_object()->cnt;
 	}
 
 	/**
@@ -1131,7 +1274,7 @@ class Media {
 	 * @param Mysqli $conn
 	 * @return array<string>
 	 */
-	public static function getMediaTags(int|array $media_id, mysqli $conn = null): array {
+	public static function getMediaTags($media_id, mysqli $conn = null): array {
 		$sql = 'SELECT t.mediaID, k.tagkey, k.shortlabel, k.description_en FROM imagetag t
 		INNER JOIN imagetagkey k ON t.keyvalue = k.tagkey
 		WHERE t.mediaID ';

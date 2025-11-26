@@ -69,9 +69,15 @@ const fieldProps = [
   },
   {
     block: "labelBlock",
-    name: "Identified By",
-    id: "identifiedby",
-    group: "determination",
+    name: "Species Name",
+    id: "speciesname",
+    group: "taxon",
+  },
+  {
+    block: 'labelBlock',
+    name: 'Identified By',
+    id: 'identifiedby',
+    group: 'determination',
   },
   {
     block: "labelBlock",
@@ -110,16 +116,16 @@ const fieldProps = [
     group: "specimen",
   },
   {
-    block: "labelBlock",
-    name: "Collector",
-    id: "collector",
-    group: "event",
+    block: 'labelBlock',
+    name: 'Collector',
+    id: 'recordedby',
+    group: 'event',
   },
   {
-    block: "labelBlock",
-    name: "Collector Number",
-    id: "collectornumber",
-    group: "event",
+    block: 'labelBlock',
+    name: 'Collector Number',
+    id: 'recordnumber',
+    group: 'event',
   },
   {
     block: "labelBlock",
@@ -156,7 +162,7 @@ const fieldProps = [
   {
     block: 'labelBlock',
     name: 'Description',
-    id: 'description',
+    id: 'verbatimAttributes',
     group: 'specimen',
   },
   { block: "labelBlock", name: "Behavior", id: "behavior", group: "specimen" },

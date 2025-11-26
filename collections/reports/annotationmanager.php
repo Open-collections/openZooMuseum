@@ -1,8 +1,10 @@
 <?php
 include_once('../../config/symbini.php');
-if($LANG_TAG != 'en' && file_exists($SERVER_ROOT.'/content/lang/collections/reports/annotationmanager.'.$LANG_TAG.'.php')) include_once($SERVER_ROOT.'/content/lang/collections/reports/annotationmanager.'.$LANG_TAG.'.php');
-else include_once($SERVER_ROOT.'/content/lang/collections/reports/annotationmanager.en.php');
 include_once($SERVER_ROOT.'/classes/OccurrenceLabel.php');
+include_once($SERVER_ROOT . '/classes/utilities/Language.php');
+
+Language::load('collections/reports/annotationmanager');
+
 header("Content-Type: text/html; charset=".$CHARSET);
 
 if(!$SYMB_UID) header('Location: ../../profile/index.php?refurl=../collections/reports/annotationmanager.php?'.htmlspecialchars($_SERVER['QUERY_STRING'], ENT_QUOTES));
@@ -109,7 +111,7 @@ if($isEditor){
 		<?php
 		if($isEditor){
 			$reportsWritable = false;
-			if(is_writable($SERVER_ROOT.'/temp/report')) $reportsWritable = true;
+			if(is_writable($TEMP_DIR_ROOT)) $reportsWritable = true;
 			if(!$reportsWritable){
 				?>
 				<div style="padding:5px;">
