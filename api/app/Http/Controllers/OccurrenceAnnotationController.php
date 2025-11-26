@@ -190,9 +190,9 @@ class OccurrenceAnnotationController extends OccurrenceController{
 	 *		 description="Error: Bad request. ",
 	 *	 ),
 	 *   @OA\Response(
-     *       response="404",
-     *       description="Record not found"
-     *   )
+	 *       response="404",
+	 *       description="Record not found"
+	 *   )
 	 * )
 	 */
 	public function showOccurrenceAnnotations($id, Request $request){
