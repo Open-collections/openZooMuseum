@@ -2,7 +2,7 @@ INSERT INTO `schemaversion` (versionnumber) VALUES ('3.4');
 
 #field for search by polygons
 ALTER TABLE geographicthesaurus
-  ADD COLUMN isSearchable TINYINT(1) NOT NULL DEFAULT 0;
+  ADD COLUMN isSearchable TINYINT(1) NOT NULL DEFAULT 0 AFTER `parentID`;
 
 ALTER TABLE `geographicthesaurus` 
   ADD INDEX `FK_geothes_geolevel` (`geoLevel` ASC);
@@ -400,6 +400,11 @@ ALTER TABLE `uploadspectemp`
   ADD COLUMN `paleo_slideProperties` TEXT,
   ADD COLUMN `paleo_geologicalContextID` TEXT,
   DROP COLUMN `paleojson`;
+
+
+ALTER TABLE `portalindex` 
+  ADD COLUMN `statusCode` INT(3) NULL AFTER `notes`,
+  ADD COLUMN `statusRemarks` VARCHAR(45) NULL AFTER `statusCode`;
 
 
 ALTER TABLE `specprocessorrawlabels`
