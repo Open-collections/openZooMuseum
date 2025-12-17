@@ -416,18 +416,6 @@ ALTER TABLE `specprocessorrawlabels`
 ALTER TABLE `taxa` 
   ADD COLUMN `sourceIdentifier` VARCHAR(150) NULL AFTER `source`;
 
-ALTER TABLE `taxa` 
-  DROP INDEX `rankid_index`,
-  DROP INDEX `unitname1_index`,
-  DROP INDEX `sciname_index`,
-  DROP INDEX `idx_taxacreated`;
-
-ALTER TABLE `taxa` 
-  ADD INDEX `IX_taxa_rankid` (`rankid` ASC),
-  ADD INDEX `IX_taxa_unitname1` (`unitname1` ASC),
-  ADD INDEX `IX_taxa_sciname` (`sciname` ASC),
-  ADD INDEX `IX_taxa_initialTimestamp` (`initialTimestamp` ASC);
-
 
 ALTER TABLE `taxaresourcelinks` 
   CHANGE COLUMN `taxaresourceid` `taxaResourceID` INT(11) NOT NULL AUTO_INCREMENT ,
@@ -459,7 +447,6 @@ ALTER TABLE `uploadtaxa`
 ALTER TABLE `uploadtaxa` 
   CHANGE COLUMN `TID` `tid` INT(10) UNSIGNED NULL DEFAULT NULL ,
   CHANGE COLUMN `SourceId` `sourceID` INT(10) UNSIGNED NULL DEFAULT NULL ,
-  CHANGE COLUMN `UpperTaxonomy` `upperTaxonomy` VARCHAR(50) NULL DEFAULT NULL ,
   CHANGE COLUMN `Family` `family` VARCHAR(50) NULL DEFAULT NULL ,
   CHANGE COLUMN `RankId` `rankID` SMALLINT(5) NULL DEFAULT NULL ,
   CHANGE COLUMN `RankName` `rankName` VARCHAR(45) NULL DEFAULT NULL ,
