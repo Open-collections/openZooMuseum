@@ -531,7 +531,7 @@ ALTER TABLE `uploadtaxa`
   ADD INDEX `IX_uploadtaxa_acceptance` (`acceptance` ASC);
 
 
-//Reset uploadspectemp indexes to be compound indexes including collid
+#Reset uploadspectemp indexes to be compound indexes including collid
 ALTER TABLE `uploadspectemp` 
   DROP INDEX `IX_uploadspectemp_dbpk`,
   DROP INDEX `IX_uploadspectemp_occurrenceID`,
