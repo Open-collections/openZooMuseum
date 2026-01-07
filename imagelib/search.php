@@ -1,8 +1,11 @@
 <?php
 include_once('../config/symbini.php');
 include_once($SERVER_ROOT . '/classes/ImageLibrarySearch.php');
-if($LANG_TAG != 'en' && !file_exists($SERVER_ROOT . '/content/lang/imagelib/search.' . $LANG_TAG . '.php')) $LANG_TAG = 'en';
-include_once($SERVER_ROOT . '/content/lang/imagelib/search.' . $LANG_TAG . '.php');
+include_once($SERVER_ROOT . '/classes/Media.php');
+include_once($SERVER_ROOT . '/classes/utilities/Language.php');
+
+Language::load('imagelib/search');
+
 header('Content-Type: text/html; charset=' . $CHARSET);
 
 $taxonType = isset($_REQUEST['taxontype']) ? filter_var($_REQUEST['taxontype'], FILTER_SANITIZE_NUMBER_INT) : 0;
@@ -64,6 +67,7 @@ if($action == 'batchAssignTag'){
 	}
 }
 
+$creators = Media::getCreatorArray();
 ?>
 <!DOCTYPE html>
 <html lang="<?= $LANG_TAG ?>">
@@ -179,12 +183,7 @@ if($action == 'batchAssignTag'){
 							<label for="phuid"><?= $LANG['CREATOR'] ?></label>:
 							<select id="phuid" name="phuid">
 								<option value="">-----------------------------</option>
-								<?php
-								$uidList = $imgLibManager->getCreatorUidArr();
-								foreach($uidList as $uid => $name){
-									echo '<option value="' . $uid . '" ' . ($imgLibManager->getCreatorUid() == $uid ? 'SELECTED' : '') . '>' . $name . '</option>';
-								}
-								?>
+								<?= Media::renderCreatorOptions(is_numeric($phUid)? intval($phUid): 0, $creators) ?>
 							</select>
 						</div>
 						<?php
@@ -471,7 +470,7 @@ if($action == 'batchAssignTag'){
 										$photoAuthor = '';
 										$authorLink = '';
 										if($imgArr['uid']){
-											$photoAuthor = $uidList[$imgArr['uid']];
+											$photoAuthor = $creators[$imgArr['uid']];
 											if(strlen($photoAuthor) > 23){
 												$nameArr = explode(',', $photoAuthor);
 												$photoAuthor = array_shift($nameArr);
