@@ -581,6 +581,7 @@ ALTER TABLE `uploadspectemp`
 
 #Add indexes to accommodate conversion of imported state codes
 ALTER TABLE `uploadspectemp` 
+  ADD INDEX `IX_uploadspectemp_basisOfRecord` (`collid`, `basisOfRecord`),
   ADD INDEX `IX_uploadspectemp_countryCode` (`collid`, `countryCode`),
   ADD INDEX `IX_uploadspectemp_country` (`collid`, `country`),
   ADD INDEX `IX_uploadspectemp_stateProvince` (`collid`, `stateProvince`);
@@ -590,7 +591,8 @@ ALTER TABLE `uploadspectemp`
 ALTER TABLE `users` 
   CHANGE COLUMN `password` `password` VARCHAR(255) NULL DEFAULT NULL ;
 
-  
+
 # Add index to improve performance on counts on verbatimCoordinates seen in OccurrenceCleaner
 ALTER TABLE `omoccurrences`
   ADD INDEX `IX_occurrences_verbatimCoordinates` (`collid`,`verbatimCoordinates`);
+
