@@ -41,7 +41,7 @@ class ImageLibrarySearch extends OccurrenceTaxaManager{
 		$this->setRecordCnt();
 		$sql = 'SELECT m.mediaID, m.tid, t.sciname, m.url, m.thumbnailurl, m.originalurl, m.creatorUid, m.caption, m.occid, m.mediaType ';
 		$sqlWhere = $this->sqlWhere;
-		if($this->imageCount == 1) $sqlWhere .= 'GROUP BY sciname ';
+		if($this->imageCount == 1) $sqlWhere .= 'GROUP BY m.tid ';
 		elseif($this->imageCount == 2) $sqlWhere .= 'GROUP BY m.occid ';
 		$sql .= $this->getSqlBase() . $sqlWhere;
 		if($this->sortBy == 'sciname') $sql .= 'ORDER BY t.sciname ';
