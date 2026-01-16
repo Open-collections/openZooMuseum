@@ -479,9 +479,14 @@ ALTER TABLE `specprocessorrawlabels`
   CHANGE COLUMN `sortsequence` `sortSequence` INT(11) NULL DEFAULT NULL ,
   CHANGE COLUMN `initialtimestamp` `initialTimestamp` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP() ;
 
+UPDATE IGNORE taxa
+  SET kingdomName = ""
+  WHERE kingdomName IS NULL;
 
 ALTER TABLE `taxa` 
-  ADD COLUMN `sourceIdentifier` VARCHAR(150) NULL AFTER `source`;
+  ADD COLUMN `sourceIdentifier` VARCHAR(150) NULL AFTER `source`,
+  CHANGE COLUMN `kingdomName` `kingdomName` VARCHAR(45) NOT NULL DEFAULT '',
+  CHANGE COLUMN `unitName2` `unitName2` VARCHAR(50) NULL DEFAULT NULL;
 
 
 ALTER TABLE `taxaresourcelinks` 
