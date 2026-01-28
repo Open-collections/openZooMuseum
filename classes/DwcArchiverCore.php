@@ -92,7 +92,7 @@ class DwcArchiverCore extends Manager{
 			$this->includeAcceptedNameUsage = true;
 		}
 
-		//ini_set('memory_limit','512M');
+		ini_set('memory_limit','512M');
 		set_time_limit(1800);
 	}
 
@@ -109,7 +109,7 @@ class DwcArchiverCore extends Manager{
 			$sqlWhere = '(c.colltype IN("Observations", "General Observations")) ';
 		}
 		if ($collTarget && $collTarget != 'all') {
-			if($collType != 'internalCall') $this->conditionArr['collid'] = $collTarget;
+			$this->conditionArr['collid'] = $collTarget;
 			$sqlWhere .= ($sqlWhere ? 'AND ' : '') . '(c.collid IN(' . $collTarget . ')) ';
 		}
 		if ($sqlWhere) {
@@ -234,8 +234,7 @@ class DwcArchiverCore extends Manager{
 		}
 
 		if($this->includeAcceptedNameUsage) {
-			// TODO (Logan) Should there be a select for this?
-			$this->conditionSql .= 'AND (ts.taxauthid = 1) ';
+			$this->conditionSql .= 'AND (ts.taxauthid = 1 OR ts.taxauthid IS NULL) ';
 		}
 
 		$sqlFrag = '';
@@ -1556,19 +1555,6 @@ class DwcArchiverCore extends Manager{
 					}
 				}
 				while ($r = $rs->fetch_assoc()) {
-					if ($this->isPublicDownload || $this->limitToGuids) {
-						//Is a download from public interface OR DwC-A publishing event pushed to aggregators, thus skip record if Full Protections apply
-						if($r['recordSecurity'] == 5){
-							if(!strpos($sql, 'recordSecurity != 5')){
-								//But only if protection is not already applied within the SQL string
-								continue;
-							}
-						}
-					}
-
-					if(!isset($this->collArr[$r['collID']])){
-						$this->setCollArr($r['collID'], 'internalCall');
-					}
 					//Set occurrenceID GUID or skip records if not defined (required output)
 					if(!$r['occurrenceID']) {
 						if($guidTarget = $this->collArr[$r['collID']]['guidtarget']){
@@ -1774,6 +1760,82 @@ class DwcArchiverCore extends Manager{
 				$this->errorMessage = 'unknown error';
 			}
 			$stmt->close();
+		}
+		if($status){
+			$this->setCollArrViaExportID();
+			$this->setFullProtections();
+		}
+		return $status;
+	}
+
+	private function setCollArrViaExportID(){
+		if(!$this->collArr){
+			$sql = 'SELECT DISTINCT collid FROM omexportoccurrences WHERE omExportID = ?';
+			$outputArr = array();
+			if($stmt = $this->conn->prepare($sql)){
+				$stmt->bind_param('i', $this->exportID);
+				$stmt->execute();
+				if($rs = $stmt->get_result()){
+					while($r = $rs->fetch_object()){
+						$outputArr[] = $r->collid;
+					}
+				}
+				$stmt->close();
+			}
+			if($outputArr){
+				$targetCollidStr = implode(',', $outputArr);
+				$this->setCollArr($targetCollidStr);
+			}
+		}
+	}
+
+	private function setFullProtections(){
+		//Function removes records that should be expluded due to full protection status
+		$status = false;
+		$removeAllRecords = true;
+		$collToRemove = array();
+		//Do not remove records if user has one of these permissions: SuperAdmin, CollAdmin, CollEditor
+		if(!empty($GLOBALS['USER_RIGHTS']['SuperAdmin'])){
+			$removeAllRecords = false;
+		}
+		else {
+			$allowedCollArr = array();
+			if(!empty($GLOBALS['USER_RIGHTS']['CollAdmin'])){
+				$allowedCollArr = $GLOBALS['USER_RIGHTS']['CollAdmin'];
+			}
+			if(!empty($GLOBALS['USER_RIGHTS']['CollEditor'])){
+				$allowedCollArr = array_merge($allowedCollArr, $GLOBALS['USER_RIGHTS']['CollEditor']);
+			}
+			if($allowedCollArr){
+				$collToRemove = array_diff(array_keys($this->collArr), $allowedCollArr);
+				$removeAllRecords = false;
+			}
+		}
+		if(!$removeAllRecords){
+			if($this->isPublicDownload || $this->limitToGuids) {
+				//Download is from public interface OR DwC-A publishing event pushed to aggregators, thus remove full protected records
+				//Even if user is authorized to download these records, records should be excluded to ensure these records are not accidentually pushed to public
+				$removeAllRecords = true;
+			}
+		}
+		$sql = '';
+		if($removeAllRecords){
+			$sql = 'DELETE FROM omexportoccurrences WHERE omExportID = ? AND recordSecurity = 5';
+		}
+		elseif($collToRemove){
+			$sql = 'DELETE FROM omexportoccurrences WHERE omExportID = ? AND recordSecurity = 5 AND collid IN(' . implode(',', $collToRemove) . ')';
+		}
+		if($sql){
+			if($stmt = $this->conn->prepare($sql)){
+				$stmt->bind_param('i', $this->exportID);
+				if($stmt->execute()){
+					$status = true;
+				}
+				elseif($stmt->error){
+					$this->errorMessage = $stmt->error;
+				}
+				$stmt->close();
+			}
 		}
 		return $status;
 	}
