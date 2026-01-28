@@ -2172,6 +2172,85 @@ class DwcArchiverCore extends Manager{
 		return $bool;
 	}
 
+	public function isAuthorized(){
+		if($_SERVER['SERVER_NAME'] == 'localhost'){
+			//Is a dev environment
+			//Note: Under Apache 2, UseCanonicalName = On and ServerName must be set.
+			//Otherwise, this value reflects the hostname supplied by the client, which can be spoofed. It is not safe to rely on this value in security-dependent contexts.
+			return true;
+		}
+
+		if(empty($_SERVER['REMOTE_ADDR'])){
+			error_log('Unauthorized access to dwcapubhandler: NULL REMOTE_ADDR');
+			return false;
+		}
+		//Check to see if referrer is within shared network
+		$refererIpPrefix = substr($_SERVER['REMOTE_ADDR'], 0, strrpos($_SERVER['REMOTE_ADDR'], '.'));
+		//error_log('Access to dwcapubhandler - refererIpPrefix: ' . $refererIpPrefix . '; serverIP: ' . $_SERVER['SERVER_ADDR']);
+		if(!empty($_SERVER['SERVER_ADDR']) && $refererIpPrefix){
+			if(strpos($_SERVER['SERVER_ADDR'], $refererIpPrefix) === 0){
+				return true;
+			}
+		}
+
+		//Check if referer is registered within portal index
+		if(empty($_SERVER['HTTP_REFERER'])){
+			error_log('Unauthorized access to dwcapubhandler: NULL HTTP_REFERER');
+			return false;
+		}
+		$refererUrl = $_SERVER['HTTP_REFERER'];
+		$refererDomain = str_replace('www.', '', parse_url($refererUrl, PHP_URL_HOST));
+		$portalIndex = $this->getPortalIndex();
+		foreach($portalIndex as $indexDomain){
+			$indexDomain = str_replace('www.', '', parse_url($indexDomain, PHP_URL_HOST));
+			if($refererDomain == $indexDomain) return true;
+		}
+
+		//Check to see if user is logged in or user token is included
+		if($GLOBALS['SYMB_UID']) return true;
+		if(!empty($_REQUEST['token'])){
+			if($this->validateUserToken($_REQUEST['token'])){
+				return true;
+			}
+			else{
+				error_log('Unauthorized access to dwcapubhandler: bad user token (' . $_REQUEST['token'] . '), ' . $refererIP . ' - ' . $refererUrl);
+				return false;
+			}
+		}
+
+		error_log('Unauthorized access to dwcapubhandler: ' . $refererIP . ' - ' . $refererUrl);
+		return false;
+	}
+
+	private function getPortalIndex(){
+		$retArr = array();
+		$sql = 'SELECT urlRoot FROM portalindex ';
+		if($stmt = $this->conn->prepare($sql)){
+			$stmt->execute();
+			$rs = $stmt->get_result();
+			while($r = $rs->fetch_object()){
+				$retArr[] = $r->urlRoot;
+			}
+			$rs->free();
+			$stmt->close();
+		}
+		return $retArr;
+	}
+
+	private function validateUserToken($userToken){
+		$authorized = false;
+		$userToken = $_REQUEST['token'];
+		$sql = 'SELECT tokenID FROM useraccesstokens WHERE token = ?';
+		if($stmt = $this->conn->prepare($sql)){
+			$stmt->bind_param('s', $userToken);
+			$stmt->execute;
+			$stmt->store_result();
+			if($stmt->num_rows) $authorized = true;
+			$stmt->close();
+		}
+		return $authorized;
+	}
+
 	//setters and getters
 	public function getCollArr($id = 0){
 		if ($id && isset($this->collArr[$id])) return $this->collArr[$id];
