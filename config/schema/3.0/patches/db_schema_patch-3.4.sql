@@ -624,3 +624,8 @@ CREATE TABLE mediametadata (
 	PRIMARY KEY (mediaID, field),
 	FOREIGN KEY (mediaID) REFERENCES media(mediaID) ON DELETE CASCADE
 ) ENGINE=INNODB;
+
+DROP TABLE IF EXISTS `lkupmunicipality`;
+DROP TABLE IF EXISTS `lkupcounty`;
+DROP TABLE IF EXISTS `lkupstateprovince`;
+DROP TABLE IF EXISTS `lkupcountry`;
