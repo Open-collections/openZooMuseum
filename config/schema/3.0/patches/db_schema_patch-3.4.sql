@@ -625,6 +625,9 @@ CREATE TABLE mediametadata (
 	FOREIGN KEY (mediaID) REFERENCES media(mediaID) ON DELETE CASCADE
 ) ENGINE=INNODB;
 
+# ALTER uploadimagetemp to use creator instead of photographer so code uses correct field
+ALTER TABLE uploadimagetemp RENAME COLUMN photographer TO creator;
+ALTER TABLE uploadimagetemp RENAME COLUMN photographerUid TO creatorUid;
 DROP TABLE IF EXISTS `lkupmunicipality`;
 DROP TABLE IF EXISTS `lkupcounty`;
 DROP TABLE IF EXISTS `lkupstateprovince`;
