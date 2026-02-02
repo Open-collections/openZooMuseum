@@ -106,18 +106,19 @@ else{
 	<fieldset style="padding:0.5rem; position: relative">
 		<legend><?php echo $LANG['RECORD_SEARCH_FORM']; ?></legend>
 		<div style="float: right">
-			<button type="button" class="icon-button" onclick="copyQueryLink(event)" title="<?= $LANG['COPY_SEARCH']; ?>" aria-label="<?= $LANG['COPY_LINK']; ?>">
+			<button type="button" class="icon-button" onclick="copyQueryLink(event)" title="<?= $LANG['COPY_SEARCH']; ?>" aria-label="<?= $LANG['COPY_LINK']; ?>" style="width: 36px;height: 36px;display:inline-flex;">
 				<span style="display:flex; align-content: center;">
 					<svg alt="Copies the search terms as a link." style="width:1.2em;margin-right:5px;" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24"><path d="M440-280H280q-83 0-141.5-58.5T80-480q0-83 58.5-141.5T280-680h160v80H280q-50 0-85 35t-35 85q0 50 35 85t85 35h160v80ZM320-440v-80h320v80H320Zm200 160v-80h160q50 0 85-35t35-85q0-50-35-85t-85-35H520v-80h160q83 0 141.5 58.5T880-480q0 83-58.5 141.5T680-280H520Z"/></svg>
 				</span>
 			</button>
 			<form name="download" action="../download/index.php" method="post" target="downloadpopup" onsubmit="window.open('', 'downloadpopup', 'left=100,top=50,width=900,height=700'); f.target = 'downloadpopup';" style="display:inline-flex;">
-				<button type="submit" class="icon-button" aria-label="<?= $LANG['DOWNLOAD_SPECIMEN_DATA'] ?>" title="<?= $LANG['DOWNLOAD_SPECIMEN_DATA'] ?>" style="width: 36px;height: 36px;">
+				<button type="submit" class="icon-button" aria-label="<?= $LANG['DOWNLOAD_SPECIMEN_DATA'] ?>" title="<?= $LANG['DOWNLOAD_SPECIMEN_DATA'] ?>" style="width: 36px;height: 36px;padding-top:8px">
 					<svg style="width:1.3em;height:1.3em" alt="<?= $LANG['IMG_DWNL_DATA']; ?>" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>
 				</button>
 				<input name="" type="hidden" value="<?= $occManager->getDownloadQuery() ?>" />
 				<input name="searchvar" type="hidden" value="<?= $occManager->getDownloadQuery() ?>" />
 				<input name="dltype" type="hidden" value="specimen" />
+				<input name="publicsearch" type="hidden" value="0" />
 			</form>
 			<?php
 			if(!$crowdSourceMode){
