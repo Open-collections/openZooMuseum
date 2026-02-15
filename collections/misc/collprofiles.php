@@ -460,31 +460,6 @@ if ($SYMB_UID) {
 										<?= $LANG['EDIT_META'] ?>
 									</a>
 								</li>
-								<!--
-								<li>
-									<a href="javascript:void(0)" onclick="showItemsList('metadataItem')"  >
-										<?= $LANG['OPEN_META'] ?>
-									</a>
-									<a onclick="showItemsList('metadataItem')">
-										<img class="seemore-icon" src="../../images/tochild.png">
-									</a>
-								</li>
-								<li class="metadataItem" style="margin-left:10px;display:none;">
-									<a href="collmetadata.php?collid=<?= $collid ?>">
-										<?= $LANG['EDIT_META'] ?>
-									</a>
-								</li>
-								<li class="metadataItem" style="margin-left:10px;display:none;">
-									<a href="colladdress.php?collid=<?= $collid ?>">
-										<?= $LANG['EDIT_ADDRESS'] ?>
-									</a>
-								</li>
-								<li class="metadataItem" style="margin-left:10px;display:none;">
-									<a href="collproperties.php?collid=<?= $collid ?>">
-										<?= $LANG['EDIT_COLL_PROPS'] ?>
-									</a>
-								</li>
-								 -->
 								<li>
 									<a href="collpermissions.php?collid=<?= $collid ?>">
 										<?= $LANG['MANAGE_PERMISSIONS'] ?>
