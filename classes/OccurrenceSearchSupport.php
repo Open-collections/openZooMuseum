@@ -117,20 +117,15 @@ class OccurrenceSearchSupport {
 	}
 
 	public static function getDbWhereFrag($dbSearchTerm){
-		$sqlRet = "";
-		//Do nothing if db = all
-		if($dbSearchTerm != 'all'){
-			if($dbSearchTerm == 'allspec'){
-				$sqlRet .= 'AND (o.collid IN(SELECT collid FROM omcollections WHERE colltype IN("Preserved Specimens","Fossil Specimens"))) ';
-			}
-			elseif($dbSearchTerm == 'allobs'){
-				$sqlRet .= 'AND (o.collid IN(SELECT collid FROM omcollections WHERE colltype IN("General Observations","Observations"))) ';
-			} else {
-				// Check in case there is ; inside dbSearchTerm
-				$dbArr = explode(';',$dbSearchTerm);
-				$dbStr = "o.collid IN(" . (is_array($dbArr)? implode(',', $dbArr): $dbArr) . ")";
-				$sqlRet .= 'AND ('.$dbStr.') ';
-			}
+		$sqlRet = '';
+		if ($dbSearchTerm == 'allspec'){
+			$sqlRet .= 'AND (o.collid IN(SELECT collid FROM omcollections WHERE colltype IN("Preserved Specimens","Fossil Specimens"))) ';
+		}
+		elseif($dbSearchTerm == 'allobs'){
+			$sqlRet .= 'AND (o.collid IN(SELECT collid FROM omcollections WHERE colltype IN("General Observations","Observations"))) ';
+		}
+		elseif(preg_match('/^[0-9;,]+$/', $dbSearchTerm)){
+			$sqlRet .= 'AND (o.collid IN(' . str_replace(';', ',', $dbSearchTerm) . ')) ';
 		}
 		return $sqlRet;
 	}
