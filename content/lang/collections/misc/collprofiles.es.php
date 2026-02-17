@@ -36,7 +36,6 @@ $LANG['ADMIN_CONTROL'] = 'Panel de Control de Administración';
 $LANG['VIEW_COMMENTS'] = 'Ver Comentarios Publicados';
 $LANG['UNREVIEWED_COMMENTS'] = 'comentarios no revisados';
 $LANG['EDIT_META'] = 'Editar Metadatos';
-$LANG['OPEN_META'] = 'Metadatos, Dirección, e Información de Contacto';
 $LANG['EDIT_COLL_PROPS'] = 'Propiedades Especiales';
 $LANG['MANAGE_PERMISSIONS'] = 'Administrar Permisos';
 $LANG['IMPORT_SPECIMEN'] = 'Importar/Actualizar Registros de Especímenes';
