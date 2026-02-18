@@ -209,6 +209,7 @@ $_SESSION['citationvar'] = $searchVar;
 					<div style="margin:5px;">
 						<?php
 						$collSearchStr = $collManager->getCollectionSearchStr();
+						if(!empty($LANG[$collSearchStr])) $collSearchStr = $LANG[$collSearchStr];
 						if (strlen($collSearchStr) > 100) {
 							$collSearchArr = explode('; ', $collSearchStr);
 							$collSearchStr = '';
