@@ -5,17 +5,17 @@ include_once($SERVER_ROOT . '/classes/utilities/Language.php');
 
 Language::load('collections/georef/batchgeoreftool');
 
-if(!$SYMB_UID) header('Location: ../profile/index.php?refurl=../collections/georef/batchgeoreftool.php?'.htmlspecialchars($_SERVER['QUERY_STRING'], ENT_QUOTES));
+if(!$SYMB_UID) header('Location: ../profile/index.php?refurl=../collections/georef/batchgeoreftool.php?' . htmlspecialchars($_SERVER['QUERY_STRING'], ENT_QUOTES));
 
-$collid = array_key_exists('collid',$_REQUEST) ? $_REQUEST['collid' ] : 0;
-$submitAction = array_key_exists('submitaction',$_POST) ? htmlspecialchars($_POST['submitaction'], ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE) : '';
+$collid = array_key_exists('collid', $_REQUEST) ? $_REQUEST['collid' ] : 0;
+$submitAction = array_key_exists('submitaction', $_POST) ? $_POST['submitaction'] : '';
 
 $qCountry = array_key_exists('qcountry',$_POST) ? htmlspecialchars($_POST['qcountry'], ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE) : '';
 $qState = array_key_exists('qstate',$_POST) ? htmlspecialchars($_POST['qstate'], ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE) : '';
 $qCounty = array_key_exists('qcounty',$_POST) ? htmlspecialchars($_POST['qcounty'], ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE) : '';
 $qMunicipality = array_key_exists('qmunicipality',$_POST) ? htmlspecialchars($_POST['qmunicipality'], ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE) : '';
 $qLocality = array_key_exists('qlocality',$_POST) ? htmlspecialchars($_POST['qlocality'], ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE) : '';
-$qDisplayAll = array_key_exists('qdisplayall',$_POST) ? $_POST['qdisplayall' ] :0;
+$qDisplayAll = array_key_exists('qdisplayall', $_POST) ? 1 :0;
 $qVStatus = array_key_exists('qvstatus',$_POST) ? htmlspecialchars($_POST['qvstatus'], ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE) : '';
 $qSciname = array_key_exists('qsciname',$_POST) ? htmlspecialchars($_POST['qsciname'], ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE) : '';
 $qProcessingStatus = array_key_exists('qprocessingstatus',$_POST) ? htmlspecialchars($_POST['qprocessingstatus'], ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE) : '';
@@ -48,21 +48,8 @@ if(is_array($collid)) $collid = implode(',',$collid);
 
 //Sanitation
 if(!preg_match('/^[,\d]+$/',$collid)) $collid = 0;
-$submitAction = htmlspecialchars($submitAction, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
-$qCountry = htmlspecialchars($qCountry, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
-$qState = htmlspecialchars($qState, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
-$qCounty = htmlspecialchars($qCounty, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
-$qMunicipality = htmlspecialchars($qMunicipality, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
-$qLocality = htmlspecialchars($qLocality, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
-$qDisplayAll = htmlspecialchars($qDisplayAll, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
-$qVStatus = htmlspecialchars($qVStatus, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
-$qSciname = htmlspecialchars($qSciname, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
-$qProcessingStatus = htmlspecialchars($qProcessingStatus, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
-$georeferenceSources = htmlspecialchars($georeferenceSources, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
-$georeferenceProtocol = htmlspecialchars($georeferenceProtocol, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
-$georeferenceVerificationStatus = htmlspecialchars($georeferenceVerificationStatus, ENT_COMPAT | ENT_HTML401 | ENT_SUBSTITUTE);
 
-if(!$georeferenceSources) $georeferenceSources = 'georef batch tool '.date('Y-m-d');
+if(!$georeferenceSources) $georeferenceSources = 'Symbiota batch georeferencing tool on ' . date('Y-m-d');
 //if(!$georeferenceVerificationStatus) $georeferenceVerificationStatus = 'reviewed - high confidence';
 
 $geoManager = new OccurrenceGeorefTools();
@@ -72,7 +59,7 @@ foreach($activeCollArr as $k => $id){
 		unset($activeCollArr[$k]);
 	}
 }
-$geoManager->setCollId($IS_ADMIN?$collid:implode(',',$activeCollArr));
+$geoManager->setCollId($IS_ADMIN ? $collid:implode(',', $activeCollArr));
 $collMap = $geoManager->getCollMap();
 
 $isEditor = false;
