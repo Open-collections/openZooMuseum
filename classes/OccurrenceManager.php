@@ -806,10 +806,12 @@ class OccurrenceManager extends OccurrenceTaxaManager {
 				$cArr = explode(';', $this->cleanInStr($this->searchTermArr['db']));
 				if($cArr[0]){
 					$retStr = '';
-					$sql = 'SELECT collid, CONCAT_WS("-",institutioncode,collectioncode) as instcode FROM omcollections WHERE collid IN(' . $cArr[0] . ') ORDER BY institutioncode,collectioncode';
+					$sql = 'SELECT collid, institutionCode, collectionCode FROM omcollections WHERE collid IN(' . $cArr[0] . ') ORDER BY institutioncode,collectioncode';
 					$rs = $this->conn->query($sql);
 					while($r = $rs->fetch_object()){
-						$retStr .= '; ' . $r->instcode;
+						$code = $r->institutionCode;
+						if($r->collectionCode) $code .= '-' . $r->collectionCode;
+						$retStr .= '; ' . $code;
 					}
 					$rs->free();
 				}
