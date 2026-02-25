@@ -26,14 +26,14 @@ class ExsiccataController extends Controller {
 	 *	 @OA\Parameter(
 	 *		 name="title",
 	 *		 in="query",
-	 *		 description="Term within exsiccata title",
+	 *		 description="Search term for the exsiccata title field. Wildcard search preformed, thus will match any word within title.",
 	 *		 required=false,
 	 *		 @OA\Schema(type="string")
 	 *	 ),
 	 *	 @OA\Parameter(
 	 *		 name="sourceIdentifier",
 	 *		 in="query",
-	 *		 description="Identifier associated with data source of the exsiccata title record",
+	 *		 description="Search term for identifier associated with data source (e.g. sourceIdentifier field)",
 	 *		 required=false,
 	 *		 @OA\Schema(type="string")
 	 *	 ),
