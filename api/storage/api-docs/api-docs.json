@@ -266,7 +266,7 @@
                     {
                         "name": "title",
                         "in": "query",
-                        "description": "Term within exsiccata title",
+                        "description": "Search term for the exsiccata title field. Wildcard search preformed, thus will match any word within title.",
                         "required": false,
                         "schema": {
                             "type": "string"
@@ -275,7 +275,7 @@
                     {
                         "name": "sourceIdentifier",
                         "in": "query",
-                        "description": "Identifier associated with data source of the exsiccata title record",
+                        "description": "Search term for identifier associated with data source (e.g. sourceIdentifier field)",
                         "required": false,
                         "schema": {
                             "type": "string"
@@ -1557,7 +1557,7 @@
                     {
                         "name": "collid",
                         "in": "query",
-                        "description": "collid(s) - collection identifier(s) in portal",
+                        "description": "collid - collection identifier (primary key)",
                         "required": false,
                         "schema": {
                             "type": "string"
@@ -1575,7 +1575,16 @@
                     {
                         "name": "occurrenceID",
                         "in": "query",
-                        "description": "occurrenceID",
+                        "description": "occurrenceID global unique identifier (GUID)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "additionalIdentifier",
+                        "in": "query",
+                        "description": "Additional identifier assigned to occurrence, previousy referenced as dwc:otherCatalogNumbers",
                         "required": false,
                         "schema": {
                             "type": "string"
@@ -1591,12 +1600,30 @@
                         }
                     },
                     {
-                        "name": "sciname",
+                        "name": "scientificName",
                         "in": "query",
                         "description": "Scientific Name - binomen only without authorship",
                         "required": false,
                         "schema": {
                             "type": "string"
+                        }
+                    },
+                    {
+                        "name": "tid",
+                        "in": "query",
+                        "description": "Primary identifier of scientific name (aka tid)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "parentTid",
+                        "in": "query",
+                        "description": "Primary identifier of parent taxon (aka tid)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
                         }
                     },
                     {
@@ -1627,90 +1654,18 @@
                         }
                     },
                     {
-                        "name": "eventDate",
+                        "name": "eventDateMin",
                         "in": "query",
-                        "description": "Date as YYYY, YYYY-MM or YYYY-MM-DD that the occurrence was collected or observed, or earliest date if a range was provided",
+                        "description": "Date (YYYY-MM-DD) when occurrence was collected or observed, or earliest date if eventDateMax is supplied to produce a range",
                         "required": false,
                         "schema": {
                             "type": "string"
                         }
                     },
                     {
-                        "name": "eventDate2",
+                        "name": "eventDateMax",
                         "in": "query",
-                        "description": "Last date as YYYY, YYYY-MM or YYYY-MM-DD that the occurrence was collected or observed. Used when a date range is provided",
-                        "required": false,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "decimalLatitude",
-                        "in": "query",
-                        "description": "Latitude as a decimal",
-                        "required": false,
-                        "schema": {
-                            "type": "number"
-                        }
-                    },
-                    {
-                        "name": "decimalLongitude",
-                        "in": "query",
-                        "description": "Longitude as a decimal",
-                        "required": false,
-                        "schema": {
-                            "type": "number"
-                        }
-                    },
-                    {
-                        "name": "minimumElevationInMeters",
-                        "in": "query",
-                        "description": "Minimum elevation in meters to nearest integer",
-                        "required": false,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "maximumElevationInMeters",
-                        "in": "query",
-                        "description": "Maximum elevation in meters to nearest integer",
-                        "required": false,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "verbatimElevation",
-                        "in": "query",
-                        "description": "Elevation expressed as a string (e.g., '1000 ft')",
-                        "required": false,
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "minimumDepthInMeters",
-                        "in": "query",
-                        "description": "Minimum depth in meters to nearest integer",
-                        "required": false,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "maximumDepthInMeters",
-                        "in": "query",
-                        "description": "Maximum depth in meters to nearest integer",
-                        "required": false,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "verbatimDepth",
-                        "in": "query",
-                        "description": "Depth expressed as a string (e.g., '200 ft')",
+                        "description": "Last date (YYYY-MM-DD) range that the occurrence was collected or observed.",
                         "required": false,
                         "schema": {
                             "type": "string"
@@ -1719,7 +1674,7 @@
                     {
                         "name": "country",
                         "in": "query",
-                        "description": "country(s), separated by comma",
+                        "description": "country",
                         "required": false,
                         "schema": {
                             "type": "string"
@@ -1728,7 +1683,7 @@
                     {
                         "name": "stateProvince",
                         "in": "query",
-                        "description": "State(s), Province(s), or second level political unit(s), separated by comma",
+                        "description": "State / Province, or second level political unit",
                         "required": false,
                         "schema": {
                             "type": "string"
@@ -1737,16 +1692,106 @@
                     {
                         "name": "county",
                         "in": "query",
-                        "description": "County(s), parish(s), or third level political unit(s), separated by comma",
+                        "description": "County / parish, or third level political unit",
                         "required": false,
                         "schema": {
                             "type": "string"
                         }
                     },
                     {
+                        "name": "decimalLatitudeMin",
+                        "in": "query",
+                        "description": "Minimum latitude as a decimal (e.g lower limit of bounding box)",
+                        "required": false,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "decimalLatitudeMax",
+                        "in": "query",
+                        "description": "Maximum latitude as a decimal (e.g upper limit of bounding box)",
+                        "required": false,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "decimalLongitudeMin",
+                        "in": "query",
+                        "description": "Minimum longitude as a decimal (e.g lower limit of bounding box)",
+                        "required": false,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "decimalLongitudeMax",
+                        "in": "query",
+                        "description": "Maximum longitude as a decimal (e.g upper limit of bounding box)",
+                        "required": false,
+                        "schema": {
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "name": "elevationMin",
+                        "in": "query",
+                        "description": "Minimum elevation in meters to nearest integer",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "elevationMax",
+                        "in": "query",
+                        "description": "Maximum elevation in meters to nearest integer",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "depthMin",
+                        "in": "query",
+                        "description": "Minimum depth in meters to nearest integer",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "depthMax",
+                        "in": "query",
+                        "description": "Maximum depth in meters to nearest integer",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
                         "name": "datasetID",
                         "in": "query",
-                        "description": "dataset ID within portal",
+                        "description": "Dataset identifier associated with groups of occurrences. See [https://docs.symbiota.org/User_Guide/Datasets/](https://docs.symbiota.org/User_Guide/Datasets/)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "dateLastModifiedMin",
+                        "in": "query",
+                        "description": "Single date that the occurrence was last modified, or minimum date when dateLastModifiedMax supplied to obtain a range (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "dateLastModifiedMax",
+                        "in": "query",
+                        "description": "Maximum date range that the occurrence was last modified (YYYY-MM-DD) ",
                         "required": false,
                         "schema": {
                             "type": "string"
@@ -1959,10 +2004,29 @@
                     {
                         "name": "includeIdentifications",
                         "in": "query",
-                        "description": "Whether to include full Identification History within output",
+                        "description": "Whether (1) or not (0) to include full Identification (Determination) History within output",
                         "required": false,
                         "schema": {
-                            "type": "integer"
+                            "type": "integer",
+                            "default": "0",
+                            "enum": [
+                                0,
+                                1
+                            ]
+                        }
+                    },
+                    {
+                        "name": "includeDatasets",
+                        "in": "query",
+                        "description": "Whether (1) or not (0) to include datasets within output",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": "0",
+                            "enum": [
+                                0,
+                                1
+                            ]
                         }
                     }
                 ],
@@ -2083,7 +2147,7 @@
                     {
                         "name": "identifierTarget",
                         "in": "query",
-                        "description": "Target field for matching identifier: catalog number, other identifiers (aka otherCatalogNumbers), GUID (occurrenceID or recordID), occid (primary key for occurrence). If identifier field is null, a new skeletal record will be created, given that a catalog number is provided.",
+                        "description": "Target field for matching identifier: catalog number, other identifiers, GUID (occurrenceID or recordID), occid (primary key for occurrence). If identifier field is null, a new skeletal record will be created, given that a catalog number is provided.",
                         "required": false,
                         "schema": {
                             "type": "string",
