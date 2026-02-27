@@ -130,7 +130,7 @@ if($action == 'Create Login'){
 			if($useRecaptcha){
 				?>
 				if(grecaptcha.getResponse() == ""){
-					alert("<?php echo (isset($LANG['CHECK_CAPTCHA'])?$LANG['CHECK_CAPTCHA']:"You must first check the reCAPTCHA checkbox (I'm not a robot)"); ?>");
+					alert("<?php echo (isset($LANG['CHECK_CAPTCHA'])?$LANG['CHECK_CAPTCHA']:"You must first check the CAPTCHA checkbox (to prove you are a human)"); ?>");
 					return false;
 				}
 				<?php
@@ -139,14 +139,10 @@ if($action == 'Create Login'){
 			if($useCAPtcha){
 			?>
 				let capToken = document.querySelector('input[name="cap-token"]');
-				if (capToken && capToken.value !== ''){
-					return true;
-				}
-				else{
-					alert("<?php echo (isset($LANG['CHECK_CAPTCHA'])?$LANG['CHECK_CAPTCHA']:"You must first check the box (to prove you are a human)"); ?>");
+				if (!(capToken && capToken.value !== '')){
+					alert("<?php echo (isset($LANG['CHECK_CAPTCHA'])?$LANG['CHECK_CAPTCHA']:"You must first check the CAPTCHA checkbox (to prove you are a human)"); ?>");
 					return false;
 				}
-				
 				<?php
 			}
 			?>
