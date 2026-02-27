@@ -37,6 +37,14 @@ ALTER TABLE `omoccurdatasets`
   ADD INDEX `IX_omoccurdatasets_datasetIdentifier` (`datasetIdentifier` ASC),
   ADD INDEX `IX_omoccurdatasets_datasetName` (`datasetName` ASC);
 
+UPDATE omoccurdatasets
+  SET datasetName = name
+  WHERE datasetName IS NULL;
+
+ALTER TABLE `omoccurdatasets` 
+  CHANGE COLUMN `datasetName` `datasetName` VARCHAR(150) NOT NULL ,
+  CHANGE COLUMN `name` `name` VARCHAR(100) NULL ;
+
 
 #field for search by polygons
 ALTER TABLE geographicthesaurus
