@@ -851,13 +851,17 @@ $requestSuppliedCatChk = (array_key_exists('catChk', $_REQUEST) && $collectionFo
 	const collectionSource = <?php echo isset($collectionSource) ? json_encode($collectionSource) : 'null'; ?>;
 	const collIdsFromUrl = <?php echo isset($collIdsFromUrl) ? json_encode($collIdsFromUrl) : 'null'; ?>;
 	if (collIdsFromUrl && Array.isArray(collIdsFromUrl) && collIdsFromUrl.length > 0) {
-		uncheckEverything();
+		uncheckEverythingInCollections();
 		checkTheCollectionsThatShouldBeChecked(collIdsFromUrl);
+		closeAllCategories();
+        expandCategoriesWithSomeCheckedChildren();
 	}
 	const sanitizedCollectionSource = collectionSource.replace('db=', '');
 	if (collectionSource) {
-		uncheckEverything();
-		checkTheCollectionsThatShouldBeChecked(sanitizedCollectionSource);
+		uncheckEverythingInCollections();
+		checkTheCollectionsThatShouldBeChecked([sanitizedCollectionSource]);
+		closeAllCategories();
+        expandCategoriesWithSomeCheckedChildren();
 		updateChip();
 	}
 
