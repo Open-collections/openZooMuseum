@@ -1,7 +1,7 @@
 <?php
 class OtherCatalog {
     private $conn;
-    private $batchSize = 1;
+    private $batchSize = 10000;
     private $modifiedUID;
     private $count = 0;
     private $totalProcessed = 0;
