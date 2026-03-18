@@ -1,7 +1,7 @@
 <?php
 class OtherCatalog {
     private $conn;
-    private $batchSize = 10000;
+    private $batchSize = 1;
     private $modifiedUID;
     private $count = 0;
     private $totalProcessed = 0;
@@ -23,6 +23,7 @@ class OtherCatalog {
         $total = ($totalResult && $row = $totalResult->fetch_assoc()) ? intval($row['total']) : 0;
 
         echo "<div style='margin-bottom:10px;'>Total records to process: <b>{$total}</b></div>";
+        echo str_repeat(' ', 1024);
         if (ob_get_level() > 0) ob_flush();
         flush();
 
@@ -52,6 +53,7 @@ class OtherCatalog {
                 if ($this->totalProcessed % $this->batchSize === 0 || $this->totalProcessed === $total) {
                     $percent = round(($this->totalProcessed / $total) * 100, 2);
                     echo "<div>{$this->totalProcessed} / {$total} processed ({$percent}%)</div>";
+                    echo str_repeat(' ', 1024);
                     if (ob_get_level() > 0) ob_flush();
                     flush();
                 }
