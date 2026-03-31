@@ -606,16 +606,29 @@ class OccurrenceAttributes extends Manager {
 			//Add notes, source, and editor uid
 			$occidChuckArr = array_chunk($occArr, '200000');
 			foreach($occidChuckArr as $oArr){
-				$sqlUpdate = 'UPDATE tmattributes SET source = "verbatimTextMining:'.$this->cleanInStr($fieldName).'", createduid = '.$GLOBALS['SYMB_UID'];
-				if($notes) $sqlUpdate .= ', notes = "'.$this->cleanInStr($notes).'"';
-				if(is_numeric($reviewStatus)) $sqlUpdate .= ', statuscode = "'.$this->cleanInStr($reviewStatus).'"';
-				$sqlUpdate .= ' WHERE stateid IN('.implode(',',$stateIDArr).') AND occid IN('.implode(',',$oArr).')';
-				//echo $sqlUpdate;
-				if(!$this->conn->query($sqlUpdate)){
-					$this->errorMessage .= 'ERROR saving batch occurrence attributes(2): '.$this->conn->error.'; ';
-					$status = false;
-				}
+				$source = 'verbatimTextMining:' . $fieldName;
+				$status = $this->updateAttribute($source, $notes, $reviewStatus, $stateIDArr, $oArr);
 			}
+		}
+		return $status;
+	}
+
+	private function updateAttribute($source, $notes, $statusCode, $stateIDArr, $occidArr){
+		$status = false;
+		$stateIdStr = implode(',', $stateIDArr);
+		if(!preg_match('/^[0-9,]+$/', $stateIdStr)) return false;
+		$occidStr = implode(',', $occidArr);
+		if(!preg_match('/^[0-9,]+$/', $occidStr)) return false;
+		$createdUid = $GLOBALS['SYMB_UID'];
+		if($notes === '') $notes = null;
+		if(!is_numeric($statusCode)) return false;
+		$sql = 'UPDATE tmattributes SET source = ?, createduid = ?, notes = ?, statuscode = ? WHERE stateid IN(' . $stateIdStr . ') AND occid IN(' . $occidStr . ')';
+		if($stmt = $this->conn->prepare($sql)){
+			$stmt->bind_param('sisi', $source, $createdUid, $notes, $statusCode);
+			$stmt->execute();
+			if ($stmt->affected_rows || !$stmt->error) $status = true;
+			else $this->errorMessage = 'ERROR: ' . $stmt->error;
+			$stmt->close();
 		}
 		return $status;
 	}
